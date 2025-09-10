@@ -1,5 +1,14 @@
 #include<bits/stdc++.h>
-#include "mylib.h"
+#include <windows.h>
+#include <conio.h>
+
+void gotoXY(int x, int y) {
+    HANDLE hConsoleOutput;
+    COORD Cursor_an_Pos = { (SHORT)x, (SHORT)y };
+    hConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleCursorPosition(hConsoleOutput, Cursor_an_Pos);
+}
+
 using namespace std;
 int main()
 {
