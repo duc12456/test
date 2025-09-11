@@ -7,7 +7,8 @@
 using namespace std;
 int sl = 4;
 
-void gotoXY(int x, int y) {
+void gotoXY(int x, int y) 
+{
     HANDLE hConsoleOutput;
     COORD Cursor_an_Pos = { (SHORT)x, (SHORT)y };
     hConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -47,7 +48,8 @@ void ve_tuong_tren()
 void ve_tuong_duoi() 
 {
     int x = 10,y = 26;
-    while(x < 100) {
+    while(x < 100) 
+	{
         gotoXY(x,y);
         cout << "*";
         x++;
@@ -57,7 +59,8 @@ void ve_tuong_duoi()
 void ve_tuong_phai() 
 {
     int x = 100, y = 1;
-    while(y <= 26) {
+    while(y <= 26) 
+	{
         gotoXY(x,y);
         cout << "*";
         y++;
@@ -67,7 +70,8 @@ void ve_tuong_phai()
 void ve_tuong_trai() 
 {
     int x = 10, y = 1;
-    while(y <= 26) {
+    while(y <= 26) 
+	{
         gotoXY(x,y);
         cout << "*";
         y++;
@@ -108,3 +112,4 @@ void ve_ran(int toadox[], int toadoy[])
         }
     }
 }
+
