@@ -1,20 +1,6 @@
 #include <bits/stdc++.h>
-#include <windows.h>
-#include <conio.h>
+#include "mylib.h"
 using namespace std;
-
-// ==== Hàm ti?n ích (thay cho mylib.h) ====
-void gotoXY(int x, int y) {
-    HANDLE hConsoleOutput;
-    COORD Cursor_an_Pos = { (SHORT)x, (SHORT)y };
-    hConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleCursorPosition(hConsoleOutput, Cursor_an_Pos);
-}
-
-void SetColor(int color) {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
-}
-// ==========================================
 
 int main() {
     int i = 1;
