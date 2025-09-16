@@ -3,11 +3,12 @@
 #include <windows.h>
 #include "mylib.h"
 #define MAX 100
+
 using namespace std;
-int s1 = 4;
 
+int s1 = 7;
 
-// Khai báo hàm v? tu?ng
+// Khai báo hàm 
 void ve_tuong_tren();
 void ve_tuong_duoi();
 void ve_tuong_phai();
@@ -19,8 +20,20 @@ void ve_ran(int toadox[], int toadoy[]);
 void xu_ly_ran(int toadox[], int toadoy[], int x, int y);
 void them(int a[], int x);
 void xoa(int a[], int vt);
+bool kt_ran_cham_tuong(int x0, int y0);
+bool kt_ran_cham_duoi(int toadox[],int toadoy[]);
+bool kt_ran(int toadox[], int toadoy[]);
+void tao_qua(int xqua, int yqua);
+
 int main()
 {
+    srand(time(Null));
+	int xqua = 0, yqua = 0;
+	
+	tao_qua(xqua,yqua);
+	
+    bool gameover = false;
+    
     int toadox[MAX], toadoy[MAX];
     ve_tuong();
     khoi_tao_ran(toadox, toadoy);
@@ -81,6 +94,7 @@ int main()
             x--;//di qua trai
         }
         xu_ly_ran(toadox, toadoy, x, y);
+        gameover = kt_ran(toadox, toadoy)
         Sleep(150);
     }
     _getch(); // ch? nh?n phím
@@ -200,4 +214,62 @@ void xoa(int a[], int vt)
         a[i] = a[i + 1];
     }
     s1--;
+}
+bool kt_ran_cham_tuong(int x0, int y0)
+{
+    if(y0 == 1 && (x0 >= 10 && x0 <= 100)) // ran cham tuong tren
+    {
+    	return true; // gameover
+	}
+	else if(y0 == 26 && (x0 >= 10 && x0 <= 100)) // va cham tuong duoi
+	{
+		return true;
+	}
+	else if(x0 == 100 && (y0 >= 1 && y0 <= 26)) // va cham tuong trai
+	{
+		return true;
+	}
+	else if(x0 == 10 && (y0 >=1 && y0 <=26)) // va cham tuong phai
+	{
+		return true;
+	}
+	return false
+}
+
+bool kt_ran_cham_duoi(int toadox[],int toadoy[]) 
+{
+	for(int i = 1 ;i < sl; i++)
+	{
+		if((toadox[0] == toadox[i]) && (toadoy[0] == toadoy[i]))
+		{
+			return true; // gameover
+		}
+	}
+	return false
+}
+
+bool kt_ran(int toadox[], int toadoy[]) // ham ktra ran can duoi va dam vao tuong
+{
+	bool kt1 = kt_ran_cham_duoi(toadox, toadoy); // gameover = true
+    bool kt2 = kt_ran_cham_tuong(toadox[0], toadoy[0]); // gameover = false
+    if(kt1 == true || kt2 == true
+    {
+        return true; // gameover
+	}
+	return false;
+}
+
+// srand(time(null)); reset seed random ngau nhien;
+// rand()%(b - a + 1)+a; = random 1 so trong doan tu a den b;
+// pham vi qua 11 <= xqua <= 99 va 2 <= yqua <= 25
+// doi voi xqua = rand() % (99 - 11 + 1) + 11;
+// doi voi yqua = rand() % (25 - 2 + 1) + 2;
+
+void tao_qua(int &xqua, int &yqua)
+{
+	xqua = rand() % (99 - 11 + 1) + 11; //11 <= xqua <= 99
+	yqua = rand() % (25 - 2 + 1) + 2; // 2 <= yqua <= 25
+	
+	gotoXY(xqua,yqua);
+	cout << "-";
 }
