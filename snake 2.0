@@ -1,0 +1,510 @@
+#include <conio.h>
+#include <iostream>
+#include <windows.h>
+#include <cstdlib>
+#include <ctime>
+#include <string>
+#include "mylib.h"
+
+#define MAX 500
+
+using namespace std;
+
+// Biến toàn cục
+int s1 = 7;
+int diem = 0;
+int tocdo = 150;
+int mauNen = 0;
+bool pauseGame = false;
+
+// Khai báo hàm
+void veMenuChinh();
+void veHieuUngMoBan();
+void veHieuUngMau();
+void veTieuDe();
+void veKhungGame();
+void veThongTin();
+void veTuongTren();
+void veTuongDuoi();
+void veTuongPhai();
+void veTuongTrai();
+void veTuong();
+void khoiTaoRan(int toadox[], int toadoy[]);
+void xoaDuLieuCu(int toadox[], int toadoy[]);
+void veRan(int toadox[], int toadoy[]);
+void xuLyRan(int toadox[], int toadoy[], int x, int y, int &xqua, int &yqua);
+void them(int a[], int x);
+void xoa(int a[], int vt);
+bool ktRanChamTuong(int x0, int y0);
+bool ktRanChamDuoi(int toadox[], int toadoy[]);
+bool ktRan(int toadox[], int toadoy[]);
+void taoQua(int& xqua, int& yqua, int toadox[], int toadoy[]);
+bool ktRanDeQua(int xqua, int yqua, int toadox[], int toadoy[]);
+bool ktRanAnQua(int xqua, int yqua, int x0, int y0);
+void veGameOver();
+void vePause();
+void capNhatTocDo();
+void veHieuUngRain();
+void playGame();
+
+// Hàm main
+int main()
+{
+    system("mode con cols=120 lines=35");
+    SetConsoleTitle(L"🐍 SNAKE GAME - Phiên Bản Sinh Động 🐍");
+    
+    srand(time(NULL));
+    
+    while (true)
+    {
+        system("cls");
+        veMenuChinh();
+        
+        char luaChon = _getch();
+        
+        switch (luaChon)
+        {
+        case '1':
+            playGame();
+            break;
+        case '2':
+            // Hướng dẫn
+            system("cls");
+            SetColor(14);
+            cout << "\n\n\t\t🎮 HƯỚNG DẪN CHƠI 🎮\n";
+            cout << "\t\t=====================\n\n";
+            SetColor(11);
+            cout << "\t\t⬆️  ↑ : Di chuyển lên\n";
+            cout << "\t\t⬇️  ↓ : Di chuyển xuống\n";
+            cout << "\t\t⬅️  ← : Di chuyển trái\n";
+            cout << "\t\t➡️  → : Di chuyển phải\n";
+            cout << "\t\t⏸️  P : Tạm dừng\n";
+            cout << "\t\t🚪 ESC: Thoát\n\n";
+            SetColor(13);
+            cout << "\t\t💡 Mẹo: Ăn quả để tăng điểm và tăng tốc độ!\n";
+            SetColor(7);
+            cout << "\n\t\tNhấn phím bất kỳ để quay lại...";
+            _getch();
+            break;
+        case '3':
+            exit(0);
+            break;
+        }
+    }
+    
+    return 0;
+}
+
+void veMenuChinh()
+{
+    veHieuUngMau();
+    veTieuDe();
+    
+    SetColor(11);
+    cout << "\n\n\t\t╔══════════════════════════════════╗\n";
+    cout << "\t\t║          🎮 MENU CHÍNH 🎮        ║\n";
+    cout << "\t\t╠══════════════════════════════════╣\n";
+    SetColor(14);
+    cout << "\t\t║  1. 🐍 Bắt đầu chơi              ║\n";
+    SetColor(13);
+    cout << "\t\t║  2. 📖 Hướng dẫn                 ║\n";
+    SetColor(12);
+    cout << "\t\t║  3. 🚪 Thoát game                ║\n";
+    SetColor(11);
+    cout << "\t\t╚══════════════════════════════════╝\n\n";
+    
+    SetColor(10);
+    cout << "\t\t💫 Nhấn số để chọn: ";
+    SetColor(7);
+}
+
+void veTieuDe()
+{
+    SetColor(14);
+    cout << "\n\n\t\t██████╗  █████╗ ███╗   ██╗    ████████╗██╗  ██╗██╗   ██╗\n";
+    cout << "\t\t██╔══██╗██╔══██╗████╗  ██║    ╚══██╔══╝██║  ██║██║   ██║\n";
+    SetColor(13);
+    cout << "\t\t██████╔╝███████║██╔██╗ ██║       ██║   ███████║██║   ██║\n";
+    cout << "\t\t██╔══██╗██╔══██║██║╚██╗██║       ██║   ██╔══██║██║   ██║\n";
+    SetColor(12);
+    cout << "\t\t██║  ██║██║  ██║██║ ╚████║       ██║   ██║  ██║╚██████╔╝\n";
+    cout << "\t\t╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝\n";
+    SetColor(11);
+    cout << "\t\t                    🐍 SINH ĐỘNG & NHIỀU MÀU SẮC 🐍\n";
+}
+
+void veHieuUngMau()
+{
+    // Tạo hiệu ứng nền động
+    mauNen = (mauNen + 1) % 16;
+    if (mauNen == 0) mauNen = 1;
+    system("cls");
+}
+
+void playGame()
+{
+    system("cls");
+    bool gameover = false;
+    diem = 0;
+    s1 = 7;
+    tocdo = 150;
+
+    int toadox[MAX], toadoy[MAX];
+    veKhungGame();
+    veTuong();
+    khoiTaoRan(toadox, toadoy);
+    veRan(toadox, toadoy);
+    
+    int xqua = 0, yqua = 0;
+    taoQua(xqua, yqua, toadox, toadoy);
+    
+    int x = 50, y = 13;
+    int check = 2;
+    
+    while (gameover == false)
+    {
+        veThongTin();
+        
+        // Xử lý phím
+        if (_kbhit())
+        {
+            char kitu = _getch();
+            
+            if (kitu == 27) // ESC
+            {
+                break;
+            }
+            else if (kitu == 'p' || kitu == 'P')
+            {
+                pauseGame = !pauseGame;
+                if (pauseGame)
+                {
+                    vePause();
+                    _getch();
+                    pauseGame = false;
+                }
+            }
+            else if (kitu == -32)
+            {
+                kitu = _getch();
+                if (kitu == 72 && check != 0) check = 1; // Lên
+                else if (kitu == 80 && check != 1) check = 0; // Xuống
+                else if (kitu == 77 && check != 3) check = 2; // Phải
+                else if (kitu == 75 && check != 2) check = 3; // Trái
+            }
+        }
+        
+        if (!pauseGame)
+        {
+            xoaDuLieuCu(toadox, toadoy);
+            
+            // Di chuyển
+            if (check == 0) y++; // Xuống
+            else if (check == 1) y--; // Lên
+            else if (check == 2) x++; // Phải
+            else if (check == 3) x--; // Trái
+            
+            xuLyRan(toadox, toadoy, x, y, xqua, yqua);
+            gameover = ktRan(toadox, toadoy);
+        }
+        
+        Sleep(tocdo);
+    }
+    
+    if (gameover)
+    {
+        veGameOver();
+        _getch();
+    }
+}
+
+void veKhungGame()
+{
+    SetColor(9);
+    for (int i = 0; i < 120; i++)
+    {
+        gotoXY(i, 0);
+        cout << "═";
+        gotoXY(i, 34);
+        cout << "═";
+    }
+    
+    for (int i = 0; i < 35; i++)
+    {
+        gotoXY(0, i);
+        cout << "║";
+        gotoXY(119, i);
+        cout << "║";
+    }
+    
+    // Góc
+    gotoXY(0, 0); cout << "╔";
+    gotoXY(119, 0); cout << "╗";
+    gotoXY(0, 34); cout << "╚";
+    gotoXY(119, 34); cout << "╝";
+}
+
+void veThongTin()
+{
+    SetColor(14);
+    gotoXY(105, 2);
+    cout << "🏆 ĐIỂM: " << diem;
+    
+    SetColor(13);
+    gotoXY(105, 4);
+    cout << "📏 CHIỀU DÀI: " << s1;
+    
+    SetColor(12);
+    gotoXY(105, 6);
+    cout << "🚀 TỐC ĐỘ: " << (200 - tocdo);
+    
+    SetColor(11);
+    gotoXY(105, 8);
+    cout << "⏸️  P: Dừng";
+    
+    SetColor(10);
+    gotoXY(105, 10);
+    cout << "🚪 ESC: Thoát";
+}
+
+void veTuongTren()
+{
+    int x = 10, y = 1;
+    while (x <= 100)
+    {
+        gotoXY(x, y);
+        SetColor(11 + (x % 3));
+        cout << "▓";
+        x++;
+    }
+}
+
+void veTuongDuoi()
+{
+    int x = 10, y = 26;
+    while (x <= 100)
+    {
+        gotoXY(x, y);
+        SetColor(11 + (x % 3));
+        cout << "▓";
+        x++;
+    }
+}
+
+void veTuongPhai()
+{
+    int x = 100, y = 1;
+    while (y <= 26)
+    {
+        gotoXY(x, y);
+        SetColor(11 + (y % 3));
+        cout << "▓";
+        y++;
+    }
+}
+
+void veTuongTrai()
+{
+    int x = 10, y = 1;
+    while (y <= 26)
+    {
+        gotoXY(x, y);
+        SetColor(11 + (y % 3));
+        cout << "▓";
+        y++;
+    }
+}
+
+void veTuong()
+{
+    veTuongTren();
+    veTuongDuoi();
+    veTuongPhai();
+    veTuongTrai();
+}
+
+void khoiTaoRan(int toadox[], int toadoy[])
+{
+    int x = 50, y = 13;
+    for (int i = 0; i < s1; i++)
+    {
+        toadox[i] = x;
+        toadoy[i] = y;
+        x--;
+    }
+}
+
+void veRan(int toadox[], int toadoy[])
+{
+    for (int i = 0; i < s1; i++)
+    {
+        gotoXY(toadox[i], toadoy[i]);
+        if (i == 0)
+        {
+            SetColor(14); // Đầu rắn màu vàng
+            cout << "🐍";
+        }
+        else
+        {
+            SetColor(10 + (i % 6)); // Thân rắn nhiều màu
+            cout << "●";
+        }
+    }
+    SetColor(7);
+}
+
+void xoaDuLieuCu(int toadox[], int toadoy[])
+{
+    for (int i = 0; i < s1; i++)
+    {
+        gotoXY(toadox[i], toadoy[i]);
+        cout << " ";
+    }
+}
+
+void xuLyRan(int toadox[], int toadoy[], int x, int y, int &xqua, int &yqua)
+{
+    them(toadox, x);
+    them(toadoy, y);
+    
+    if (ktRanAnQua(xqua, yqua, toadox[0], toadoy[0]) == false)
+    {
+        xoa(toadox, s1 - 1);
+        xoa(toadoy, s1 - 1);
+    }
+    else
+    {
+        diem += 10;
+        capNhatTocDo();
+        taoQua(xqua, yqua, toadox, toadoy);
+        
+        // Hiệu ứng ăn quả
+        SetColor(15);
+        gotoXY(xqua, yqua);
+        cout << "✨";
+        Sleep(100);
+    }
+    
+    veRan(toadox, toadoy);
+}
+
+void capNhatTocDo()
+{
+    if (tocdo > 50)
+    {
+        tocdo -= 5;
+    }
+}
+
+void them(int a[], int x)
+{
+    for (int i = s1; i > 0; i--)
+    {
+        a[i] = a[i - 1];
+    }
+    a[0] = x;
+    s1++;
+}
+
+void xoa(int a[], int vt)
+{
+    for (int i = vt; i < s1; i++)
+    {
+        a[i] = a[i + 1];
+    }
+    s1--;
+}
+
+bool ktRanChamTuong(int x0, int y0)
+{
+    return (y0 <= 1 || y0 >= 26 || x0 <= 10 || x0 >= 100);
+}
+
+bool ktRanChamDuoi(int toadox[], int toadoy[])
+{
+    for (int i = 1; i < s1; i++)
+    {
+        if (toadox[0] == toadox[i] && toadoy[0] == toadoy[i])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ktRan(int toadox[], int toadoy[])
+{
+    return ktRanChamDuoi(toadox, toadoy) || ktRanChamTuong(toadox[0], toadoy[0]);
+}
+
+void taoQua(int &xqua, int &yqua, int toadox[], int toadoy[])
+{
+    do
+    {
+        xqua = rand() % (99 - 11 + 1) + 11;
+        yqua = rand() % (25 - 2 + 1) + 2;
+    } while (ktRanDeQua(xqua, yqua, toadox, toadoy));
+    
+    int mauQua = rand() % 6 + 10;
+    SetColor(mauQua);
+    gotoXY(xqua, yqua);
+    cout << "🍎";
+    SetColor(7);
+}
+
+bool ktRanDeQua(int xqua, int yqua, int toadox[], int toadoy[])
+{
+    for (int i = 0; i < s1; i++)
+    {
+        if (xqua == toadox[i] && yqua == toadoy[i])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ktRanAnQua(int xqua, int yqua, int x0, int y0)
+{
+    return (x0 == xqua && y0 == yqua);
+}
+
+void veGameOver()
+{
+    system("cls");
+    SetColor(12);
+    cout << "\n\n\t\t██████╗  █████╗ ███╗   ███╗███████╗     ██████╗ ██╗   ██╗███████╗██████╗ \n";
+    cout << "\t\t██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ██╔═══██╗██║   ██║██╔════╝██╔══██╗\n";
+    cout << "\t\t██║  ███╗███████║██╔████╔██║█████╗      ██║   ██║██║   ██║█████╗  ██████╔╝\n";
+    cout << "\t\t██║   ██║██╔══██║██║╚██╔╝██║██╔══╝      ██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗\n";
+    cout << "\t\t╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║\n";
+    cout << "\t\t ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝\n\n";
+    
+    SetColor(14);
+    cout << "\t\t╔══════════════════════════════════════════╗\n";
+    cout << "\t\t║              🎮 KẾT QUẢ 🎮              ║\n";
+    cout << "\t\t╠══════════════════════════════════════════╣\n";
+    SetColor(13);
+    cout << "\t\t║  🏆 Điểm số của bạn: " << diem << " điểm" << string(18 - to_string(diem).length(), ' ') << "║\n";
+    cout << "\t\t║  📏 Chiều dài rắn: " << s1 << " đốt" << string(20 - to_string(s1).length(), ' ') << "║\n";
+    SetColor(14);
+    cout << "\t\t╚══════════════════════════════════════════╝\n\n";
+    
+    SetColor(11);
+    cout << "\t\t🌟 Cảm ơn bạn đã chơi! Nhấn phím bất kỳ để tiếp tục...";
+    SetColor(7);
+}
+
+void vePause()
+{
+    SetColor(11);
+    gotoXY(40, 13);
+    cout << "╔══════════════════════╗";
+    gotoXY(40, 14);
+    cout << "║   ⏸️  GAME DỪNG ⏸️   ║";
+    gotoXY(40, 15);
+    cout << "║ Nhấn P để tiếp tục... ║";
+    gotoXY(40, 16);
+    cout << "╚══════════════════════╝";
+    SetColor(7);
+}
