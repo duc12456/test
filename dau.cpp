@@ -28,7 +28,7 @@ void tao_qua(int &xqua, int &yqua);
 // ham main
 int main()
 {
-    srand(time(NULL)); // Fixed: NULL instead of Null
+    srand(time(NULL));
     int xqua = 0, yqua = 0;
     
     tao_qua(xqua, yqua);
