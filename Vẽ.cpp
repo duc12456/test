@@ -6,8 +6,7 @@
 using namespace std;
 int s1 = 4;
 
-
-// Khai báo hàm v? tu?ng
+// Khai báo hàm vẽ tường
 void ve_tuong_tren();
 void ve_tuong_duoi();
 void ve_tuong_phai();
@@ -19,71 +18,82 @@ void ve_ran(int toadox[], int toadoy[]);
 void xu_ly_ran(int toadox[], int toadoy[], int x, int y);
 void them(int a[], int x);
 void xoa(int a[], int vt);
+bool kiem_tra_va_cham(int toadox[], int toadoy[], int x, int y);
+
 int main()
 {
     int toadox[MAX], toadoy[MAX];
     ve_tuong();
     khoi_tao_ran(toadox, toadoy);
     ve_ran(toadox, toadoy);
-    int x = 50, y = 13;// ding hinh vi tri can di chuyen cho ran
+    int x = 50, y = 13; // định hình vị trí cần di chuyển cho rắn
     int check = 2;
+    
     while (true)
     {
-        
-       // system("cls")
-        // ==== backspace
+        // xóa dữ liệu cũ
         xoa_du_lieu_cu(toadox, toadoy);
      
-        // 0 : di xuong
-        // 1 : di len
-        // 2 : qua phai
-        // 3 : qua trai
-        // ===== dieu kien
+        // 0 : đi xuống
+        // 1 : đi lên
+        // 2 : qua phải
+        // 3 : qua trái
+        // điều kiện
         if (_kbhit())
         {
             char kitu = _getch();
             if (kitu == -32)
             {
                 kitu = _getch();
-                if (kitu == 72 && check!=0) //di len
+                if (kitu == 72 && check != 0) //đi lên
                 {
                     check = 1;
                 }
-                else if (kitu == 80 && check!=1) // di xuong
+                else if (kitu == 80 && check != 1) // đi xuống
                 {
                     check = 0;
                 }
-                else if (kitu == 77 && check!=3)// di phai
+                else if (kitu == 77 && check != 3) // đi phải
                 {
                     check = 2;
                 }
-                else if (kitu == 75 && check!=2)// qua trai
+                else if (kitu == 75 && check != 2) // qua trái
                 {
                     check = 3;
                 }
             }
         }
-        // ====== thuc hien di chuyen
+        
+        // thực hiện di chuyển
         if (check == 0)
         {
-            y++;//di xuong
+            y++; // đi xuống
         }
         else if (check == 1)
         {
-            y--;//di len
+            y--; // đi lên
         }
         else if (check == 2)
         {
-            x++; //di qua phai
+            x++; // đi qua phải
         }
         else if (check == 3)
         {
-            x--;//di qua trai
+            x--; // đi qua trái
         }
+        
+        // Kiểm tra va chạm
+        if (kiem_tra_va_cham(toadox, toadoy, x, y))
+        {
+            gotoXY(30, 30);
+            cout << "Game Over! Press any key to exit...";
+            _getch();
+            break;
+        }
+        
         xu_ly_ran(toadox, toadoy, x, y);
         Sleep(150);
     }
-    _getch(); // ch? nh?n phím
     return 0;
 }
 
@@ -157,14 +167,15 @@ void ve_ran(int toadox[], int toadoy[])
         gotoXY(toadox[i], toadoy[i]);
         if (i == 0)
         {
-            cout << "0";
+            cout << "0"; // đầu rắn
         }
         else
         {
-            cout << "o";
+            cout << "o"; // thân rắn
         }
     }
 }
+
 void xoa_du_lieu_cu(int toadox[], int toadoy[])
 {
     for (int i = 0; i < s1; i++)
@@ -173,17 +184,19 @@ void xoa_du_lieu_cu(int toadox[], int toadoy[])
         cout << " ";
     }
 }
-void xu_ly_ran(int toadox[],int toadoy[],int x,int y)
+
+void xu_ly_ran(int toadox[], int toadoy[], int x, int y)
 {
-    //b1: them toa do moi vao dau mang
+    // b1: thêm tọa độ mới vào đầu mảng
     them(toadox, x);
     them(toadoy, y);
-    //b2: xoa toa do cuoi mang
+    // b2: xóa tọa độ cuối mảng
     xoa(toadox, s1 - 1);
     xoa(toadoy, s1 - 1);
-    //b3: ve ran
+    // b3: vẽ rắn
     ve_ran(toadox, toadoy);
 }
+
 void them(int a[], int x)
 {
     for (int i = s1; i > 0; i--)
@@ -193,11 +206,33 @@ void them(int a[], int x)
     a[0] = x;
     s1++;
 }
+
 void xoa(int a[], int vt)
 {
-    for (int i = vt; i < s1; i++)
+    for (int i = vt; i < s1 - 1; i++) // Sửa điều kiện i < s1 - 1
     {
         a[i] = a[i + 1];
     }
     s1--;
+}
+
+// Hàm kiểm tra va chạm với tường và thân rắn
+bool kiem_tra_va_cham(int toadox[], int toadoy[], int x, int y)
+{
+    // Kiểm tra va chạm với tường
+    if (x <= 10 || x >= 100 || y <= 1 || y >= 26)
+    {
+        return true;
+    }
+    
+    // Kiểm tra va chạm với thân rắn
+    for (int i = 0; i < s1; i++)
+    {
+        if (toadox[i] == x && toadoy[i] == y)
+        {
+            return true;
+        }
+    }
+    
+    return false;
 }
