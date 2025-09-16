@@ -1,10 +1,9 @@
-#include <conio.h>
 #include <iostream>
 #include <windows.h>
 #include <cstdlib>
 #include <ctime>
 #include <string>
-#include "mylib.h"
+#include <conio.h>
 
 #define MAX 500
 
@@ -14,12 +13,29 @@ using namespace std;
 int s1 = 7;
 int diem = 0;
 int tocdo = 150;
-int mauNen = 0;
 bool pauseGame = false;
+
+// Hàm thay thế mylib.h
+void gotoXY(int x, int y) {
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+void SetColor(int color) {
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+}
+
+void HideCursor() {
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
+    cursorInfo.bVisible = false;
+    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
+}
 
 // Khai báo hàm
 void veMenuChinh();
-void veHieuUngMoBan();
 void veHieuUngMau();
 void veTieuDe();
 void veKhungGame();
@@ -32,7 +48,7 @@ void veTuong();
 void khoiTaoRan(int toadox[], int toadoy[]);
 void xoaDuLieuCu(int toadox[], int toadoy[]);
 void veRan(int toadox[], int toadoy[]);
-void xuLyRan(int toadox[], int toadoy[], int x, int y, int &xqua, int &yqua);
+void xuLyRan(int toadox[], int toadoy[], int x, int y, int& xqua, int& yqua);
 void them(int a[], int x);
 void xoa(int a[], int vt);
 bool ktRanChamTuong(int x0, int y0);
@@ -44,16 +60,18 @@ bool ktRanAnQua(int xqua, int yqua, int x0, int y0);
 void veGameOver();
 void vePause();
 void capNhatTocDo();
-void veHieuUngRain();
 void playGame();
+void veHuongDan();
 
 // Hàm main
 int main()
 {
+    // Cấu hình console cho Visual Studio
     system("mode con cols=120 lines=35");
-    SetConsoleTitle(L"🐍 SNAKE GAME - Phiên Bản Sinh Động 🐍");
+    SetConsoleTitleA("SNAKE GAME - Phien Ban Sinh Dong");
+    HideCursor();
     
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     
     while (true)
     {
@@ -68,27 +86,17 @@ int main()
             playGame();
             break;
         case '2':
-            // Hướng dẫn
-            system("cls");
-            SetColor(14);
-            cout << "\n\n\t\t🎮 HƯỚNG DẪN CHƠI 🎮\n";
-            cout << "\t\t=====================\n\n";
-            SetColor(11);
-            cout << "\t\t⬆️  ↑ : Di chuyển lên\n";
-            cout << "\t\t⬇️  ↓ : Di chuyển xuống\n";
-            cout << "\t\t⬅️  ← : Di chuyển trái\n";
-            cout << "\t\t➡️  → : Di chuyển phải\n";
-            cout << "\t\t⏸️  P : Tạm dừng\n";
-            cout << "\t\t🚪 ESC: Thoát\n\n";
-            SetColor(13);
-            cout << "\t\t💡 Mẹo: Ăn quả để tăng điểm và tăng tốc độ!\n";
-            SetColor(7);
-            cout << "\n\t\tNhấn phím bất kỳ để quay lại...";
-            _getch();
+            veHuongDan();
             break;
         case '3':
+            SetColor(7);
+            system("cls");
+            cout << "\n\n\t\tCam on ban da choi game! Hen gap lai!\n\n";
+            Sleep(2000);
             exit(0);
             break;
+        default:
+            continue;
         }
     }
     
@@ -97,48 +105,63 @@ int main()
 
 void veMenuChinh()
 {
-    veHieuUngMau();
     veTieuDe();
     
     SetColor(11);
-    cout << "\n\n\t\t╔══════════════════════════════════╗\n";
-    cout << "\t\t║          🎮 MENU CHÍNH 🎮        ║\n";
-    cout << "\t\t╠══════════════════════════════════╣\n";
+    cout << "\n\n\t\t+==================================+\n";
+    cout << "\t\t|          MENU CHINH              |\n";
+    cout << "\t\t+==================================+\n";
     SetColor(14);
-    cout << "\t\t║  1. 🐍 Bắt đầu chơi              ║\n";
+    cout << "\t\t|  1. Bat dau choi                 |\n";
     SetColor(13);
-    cout << "\t\t║  2. 📖 Hướng dẫn                 ║\n";
+    cout << "\t\t|  2. Huong dan                    |\n";
     SetColor(12);
-    cout << "\t\t║  3. 🚪 Thoát game                ║\n";
+    cout << "\t\t|  3. Thoat game                   |\n";
     SetColor(11);
-    cout << "\t\t╚══════════════════════════════════╝\n\n";
+    cout << "\t\t+==================================+\n\n";
     
     SetColor(10);
-    cout << "\t\t💫 Nhấn số để chọn: ";
+    cout << "\t\t*** Nhan so de chon: ";
     SetColor(7);
 }
 
 void veTieuDe()
 {
     SetColor(14);
-    cout << "\n\n\t\t██████╗  █████╗ ███╗   ██╗    ████████╗██╗  ██╗██╗   ██╗\n";
-    cout << "\t\t██╔══██╗██╔══██╗████╗  ██║    ╚══██╔══╝██║  ██║██║   ██║\n";
+    cout << "\n\n";
+    cout << "\t\t ######     ###    ##    ##    ########  ##   ## ##   ##\n";
+    cout << "\t\t##         ## ##   ###   ##       ##     ##   ## ##   ##\n";
     SetColor(13);
-    cout << "\t\t██████╔╝███████║██╔██╗ ██║       ██║   ███████║██║   ██║\n";
-    cout << "\t\t██╔══██╗██╔══██║██║╚██╗██║       ██║   ██╔══██║██║   ██║\n";
+    cout << "\t\t ######   ##   ##  ## ## ##       ##     ####### ##   ##\n";
+    cout << "\t\t      ## ######### ##  ####       ##     ##   ## ##   ##\n";
     SetColor(12);
-    cout << "\t\t██║  ██║██║  ██║██║ ╚████║       ██║   ██║  ██║╚██████╔╝\n";
-    cout << "\t\t╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝\n";
+    cout << "\t\t ###### ##     ## ##   ###       ##     ##   ##  #####\n";
     SetColor(11);
-    cout << "\t\t                    🐍 SINH ĐỘNG & NHIỀU MÀU SẮC 🐍\n";
+    cout << "\t\t              *** SINH DONG & NHIEU MAU SAC ***\n";
 }
 
-void veHieuUngMau()
+void veHuongDan()
 {
-    // Tạo hiệu ứng nền động
-    mauNen = (mauNen + 1) % 16;
-    if (mauNen == 0) mauNen = 1;
     system("cls");
+    SetColor(14);
+    cout << "\n\n\t\tHUONG DAN CHOI GAME\n";
+    cout << "\t\t===================\n\n";
+    SetColor(11);
+    cout << "\t\tCach dieu khien:\n";
+    cout << "\t\t- Mui ten len    : Di chuyen len\n";
+    cout << "\t\t- Mui ten xuong  : Di chuyen xuong\n";
+    cout << "\t\t- Mui ten trai   : Di chuyen trai\n";
+    cout << "\t\t- Mui ten phai   : Di chuyen phai\n";
+    cout << "\t\t- Phim P         : Tam dung\n";
+    cout << "\t\t- Phim ESC       : Thoat\n\n";
+    SetColor(13);
+    cout << "\t\tMuc tieu:\n";
+    cout << "\t\t- An qua de tang diem va tang kich thuoc ran\n";
+    cout << "\t\t- Tranh va cham vao tuong va than ran\n";
+    cout << "\t\t- Cang an nhieu qua, toc do cang tang!\n\n";
+    SetColor(7);
+    cout << "\t\tNhan phim bat ky de quay lai menu...";
+    _getch();
 }
 
 void playGame()
@@ -182,9 +205,10 @@ void playGame()
                     vePause();
                     _getch();
                     pauseGame = false;
+                    veThongTin(); // Vẽ lại thông tin sau khi pause
                 }
             }
-            else if (kitu == -32)
+            else if (kitu == -32) // Extended key
             {
                 kitu = _getch();
                 if (kitu == 72 && check != 0) check = 1; // Lên
@@ -221,97 +245,92 @@ void playGame()
 void veKhungGame()
 {
     SetColor(9);
+    // Vẽ khung ngoài
     for (int i = 0; i < 120; i++)
     {
         gotoXY(i, 0);
-        cout << "═";
+        cout << "=";
         gotoXY(i, 34);
-        cout << "═";
+        cout << "=";
     }
     
     for (int i = 0; i < 35; i++)
     {
         gotoXY(0, i);
-        cout << "║";
+        cout << "|";
         gotoXY(119, i);
-        cout << "║";
+        cout << "|";
     }
     
     // Góc
-    gotoXY(0, 0); cout << "╔";
-    gotoXY(119, 0); cout << "╗";
-    gotoXY(0, 34); cout << "╚";
-    gotoXY(119, 34); cout << "╝";
+    gotoXY(0, 0); cout << "+";
+    gotoXY(119, 0); cout << "+";
+    gotoXY(0, 34); cout << "+";
+    gotoXY(119, 34); cout << "+";
+    SetColor(7);
 }
 
 void veThongTin()
 {
     SetColor(14);
     gotoXY(105, 2);
-    cout << "🏆 ĐIỂM: " << diem;
+    cout << "DIEM: " << diem;
     
     SetColor(13);
     gotoXY(105, 4);
-    cout << "📏 CHIỀU DÀI: " << s1;
+    cout << "CHIEU DAI: " << s1;
     
     SetColor(12);
     gotoXY(105, 6);
-    cout << "🚀 TỐC ĐỘ: " << (200 - tocdo);
+    cout << "TOC DO: " << (200 - tocdo);
     
     SetColor(11);
     gotoXY(105, 8);
-    cout << "⏸️  P: Dừng";
+    cout << "P: Tam dung";
     
     SetColor(10);
     gotoXY(105, 10);
-    cout << "🚪 ESC: Thoát";
+    cout << "ESC: Thoat";
+    SetColor(7);
 }
 
 void veTuongTren()
 {
-    int x = 10, y = 1;
-    while (x <= 100)
+    for (int x = 10; x <= 100; x++)
     {
-        gotoXY(x, y);
-        SetColor(11 + (x % 3));
-        cout << "▓";
-        x++;
+        gotoXY(x, 1);
+        SetColor(11 + (x % 4));
+        cout << "#";
     }
 }
 
 void veTuongDuoi()
 {
-    int x = 10, y = 26;
-    while (x <= 100)
+    for (int x = 10; x <= 100; x++)
     {
-        gotoXY(x, y);
-        SetColor(11 + (x % 3));
-        cout << "▓";
-        x++;
+        gotoXY(x, 26);
+        SetColor(11 + (x % 4));
+        cout << "#";
     }
 }
 
 void veTuongPhai()
 {
-    int x = 100, y = 1;
-    while (y <= 26)
+    for (int y = 1; y <= 26; y++)
     {
-        gotoXY(x, y);
-        SetColor(11 + (y % 3));
-        cout << "▓";
-        y++;
+        gotoXY(100, y);
+        SetColor(11 + (y % 4));
+        cout << "#";
     }
 }
 
 void veTuongTrai()
 {
-    int x = 10, y = 1;
-    while (y <= 26)
+    for (int y = 1; y <= 26; y++)
     {
-        gotoXY(x, y);
-        SetColor(11 + (y % 3));
-        cout << "▓";
-        y++;
+        gotoXY(10, y);
+        SetColor(11 + (y % 4));
+        cout << "#";
     }
 }
 
@@ -321,6 +340,7 @@ void veTuong()
     veTuongDuoi();
     veTuongPhai();
     veTuongTrai();
+    SetColor(7);
 }
 
 void khoiTaoRan(int toadox[], int toadoy[])
@@ -342,12 +362,12 @@ void veRan(int toadox[], int toadoy[])
         if (i == 0)
         {
             SetColor(14); // Đầu rắn màu vàng
-            cout << "🐍";
+            cout << "@";
         }
         else
         {
             SetColor(10 + (i % 6)); // Thân rắn nhiều màu
-            cout << "●";
+            cout << "o";
         }
     }
     SetColor(7);
@@ -362,7 +382,7 @@ void xoaDuLieuCu(int toadox[], int toadoy[])
     }
 }
 
-void xuLyRan(int toadox[], int toadoy[], int x, int y, int &xqua, int &yqua)
+void xuLyRan(int toadox[], int toadoy[], int x, int y, int& xqua, int& yqua)
 {
     them(toadox, x);
     them(toadoy, y);
@@ -376,13 +396,14 @@ void xuLyRan(int toadox[], int toadoy[], int x, int y, int &xqua, int &yqua)
     {
         diem += 10;
         capNhatTocDo();
-        taoQua(xqua, yqua, toadox, toadoy);
         
         // Hiệu ứng ăn quả
         SetColor(15);
         gotoXY(xqua, yqua);
-        cout << "✨";
+        cout << "*";
         Sleep(100);
+        
+        taoQua(xqua, yqua, toadox, toadoy);
     }
     
     veRan(toadox, toadoy);
@@ -437,7 +458,7 @@ bool ktRan(int toadox[], int toadoy[])
     return ktRanChamDuoi(toadox, toadoy) || ktRanChamTuong(toadox[0], toadoy[0]);
 }
 
-void taoQua(int &xqua, int &yqua, int toadox[], int toadoy[])
+void taoQua(int& xqua, int& yqua, int toadox[], int toadoy[])
 {
     do
     {
@@ -448,7 +469,7 @@ void taoQua(int &xqua, int &yqua, int toadox[], int toadoy[])
     int mauQua = rand() % 6 + 10;
     SetColor(mauQua);
     gotoXY(xqua, yqua);
-    cout << "🍎";
+    cout << "$";
     SetColor(7);
 }
 
@@ -473,25 +494,34 @@ void veGameOver()
 {
     system("cls");
     SetColor(12);
-    cout << "\n\n\t\t██████╗  █████╗ ███╗   ███╗███████╗     ██████╗ ██╗   ██╗███████╗██████╗ \n";
-    cout << "\t\t██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ██╔═══██╗██║   ██║██╔════╝██╔══██╗\n";
-    cout << "\t\t██║  ███╗███████║██╔████╔██║█████╗      ██║   ██║██║   ██║█████╗  ██████╔╝\n";
-    cout << "\t\t██║   ██║██╔══██║██║╚██╔╝██║██╔══╝      ██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗\n";
-    cout << "\t\t╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║\n";
-    cout << "\t\t ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝\n\n";
+    cout << "\n\n\t\t  ####    ##   ##   ## ###  ######       ####   ##  ##  ######  ###### \n";
+    cout << "\t\t ##       ## # ##   ##  ##   ##          ##  ##  ##  ##   ##  ##   ##    \n";
+    cout << "\t\t ##  ###  ##   ##   ##      ####        ##  ##  ##  ##   ####    ####  \n";
+    cout << "\t\t ##   ##  ##   ##   ## ##   ##          ##  ##   ####    ##      ##    \n";
+    cout << "\t\t  ####    ##   ##  ###  ##  ######       ####     ##     ######  ###### \n\n";
     
     SetColor(14);
-    cout << "\t\t╔══════════════════════════════════════════╗\n";
-    cout << "\t\t║              🎮 KẾT QUẢ 🎮              ║\n";
-    cout << "\t\t╠══════════════════════════════════════════╣\n";
+    cout << "\t\t+==========================================+\n";
+    cout << "\t\t|              KET QUA GAME               |\n";
+    cout << "\t\t+==========================================+\n";
     SetColor(13);
-    cout << "\t\t║  🏆 Điểm số của bạn: " << diem << " điểm" << string(18 - to_string(diem).length(), ' ') << "║\n";
-    cout << "\t\t║  📏 Chiều dài rắn: " << s1 << " đốt" << string(20 - to_string(s1).length(), ' ') << "║\n";
+    cout << "\t\t| Diem so cua ban: " << diem;
+    
+    // Căn chỉnh format
+    int spaces = 22 - to_string(diem).length();
+    for (int i = 0; i < spaces; i++) cout << " ";
+    cout << "|\n";
+    
+    cout << "\t\t| Chieu dai ran: " << s1;
+    spaces = 24 - to_string(s1).length();
+    for (int i = 0; i < spaces; i++) cout << " ";
+    cout << "|\n";
+    
     SetColor(14);
-    cout << "\t\t╚══════════════════════════════════════════╝\n\n";
+    cout << "\t\t+==========================================+\n\n";
     
     SetColor(11);
-    cout << "\t\t🌟 Cảm ơn bạn đã chơi! Nhấn phím bất kỳ để tiếp tục...";
+    cout << "\t\tCam on ban da choi! Nhan phim bat ky de tiep tuc...";
     SetColor(7);
 }
 
@@ -499,12 +529,12 @@ void vePause()
 {
     SetColor(11);
     gotoXY(40, 13);
-    cout << "╔══════════════════════╗";
+    cout << "+=====================+";
     gotoXY(40, 14);
-    cout << "║   ⏸️  GAME DỪNG ⏸️   ║";
+    cout << "|    GAME TAM DUNG    |";
     gotoXY(40, 15);
-    cout << "║ Nhấn P để tiếp tục... ║";
+    cout << "| Nhan P de tiep tuc  |";
     gotoXY(40, 16);
-    cout << "╚══════════════════════╝";
+    cout << "+=====================+";
     SetColor(7);
 }
