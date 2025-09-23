@@ -1,0 +1,444 @@
+/* snake.cpp - Trò chơi rắn săn mồi */
+
+/*
+ * Triển khai logic của trò chơi Snake. Được thiết kế để biểu diễn hiệu quả
+ * trạng thái của trò chơi trong bộ nhớ.
+ */
+
+#define SDL_MAIN_USE_CALLBACKS 1 /* sử dụng callbacks thay vì main() */
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+
+// Các hằng số cấu hình trò chơi
+#define TOC_DO_BUOC_MILI_GIAY          125  // Tốc độ mỗi bước (milliseconds)
+#define KICH_THUOC_KHOI_RAN_PIXEL      24   // Kích thước mỗi ô rắn (pixels)
+#define CHIEU_RONG_CUA_SO              (KICH_THUOC_KHOI_RAN_PIXEL * CHIEU_RONG_TRAN_DAU)
+#define CHIEU_CAO_CUA_SO               (KICH_THUOC_KHOI_RAN_PIXEL * CHIEU_CAO_TRAN_DAU)
+
+// Kích thước trận đấu
+#define CHIEU_RONG_TRAN_DAU            24U  // Chiều rộng trận đấu
+#define CHIEU_CAO_TRAN_DAU             18U  // Chiều cao trận đấu
+#define KICH_THUOC_MA_TRAN_RAN         (CHIEU_RONG_TRAN_DAU * CHIEU_CAO_TRAN_DAU)
+
+// Bit manipulation cho lưu trữ ô
+#define SO_BIT_TOI_DA_O_RAN            3U   // floor(log2(SNAKE_CELL_FOOD)) + 1
+#define BIT_THIET_LAP_O_RAN            (~(~0u << SO_BIT_TOI_DA_O_RAN))
+#define DICH_CHUYEN(x, y)              (((x) + ((y) * CHIEU_RONG_TRAN_DAU)) * SO_BIT_TOI_DA_O_RAN)
+
+static SDL_Joystick *tay_cam = nullptr; // Tay cầm điều khiển
+
+// Enum định nghĩa các loại ô trong game
+enum class LoaiORan
+{
+    KHONG_CO_GI = 0U,     // Ô trống
+    RAN_SANG_PHAI = 1U,   // Rắn đi sang phải
+    RAN_DI_LEN = 2U,      // Rắn đi lên
+    RAN_SANG_TRAI = 3U,   // Rắn đi sang trái  
+    RAN_DI_XUONG = 4U,    // Rắn đi xuống
+    THUC_AN = 5U          // Thức ăn
+};
+
+// Enum định nghĩa hướng di chuyển
+enum class HuongDiChuyen
+{
+    SANG_PHAI,    // Đi sang phải
+    DI_LEN,       // Đi lên
+    SANG_TRAI,    // Đi sang trái
+    DI_XUONG      // Đi xuống
+};
+
+// Struct chứa trạng thái trò chơi Snake
+struct BoiCanhRan
+{
+    unsigned char cac_o_ran[(KICH_THUOC_MA_TRAN_RAN * SO_BIT_TOI_DA_O_RAN) / 8U]; // Mảng lưu trữ các ô
+    char vi_tri_dau_x;          // Vị trí X của đầu rắn
+    char vi_tri_dau_y;          // Vị trí Y của đầu rắn
+    char vi_tri_duoi_x;         // Vị trí X của đuôi rắn
+    char vi_tri_duoi_y;         // Vị trí Y của đuôi rắn
+    char huong_tiep_theo;       // Hướng di chuyển tiếp theo
+    char cam_buoc_duoi;         // Cấm di chuyển đuôi (khi ăn thức ăn)
+    unsigned so_o_da_chiem;     // Số ô đã chiếm
+};
+
+// Struct chứa trạng thái ứng dụng
+struct TrangThaiUngDung
+{
+    SDL_Window *cua_so;         // Cửa sổ SDL
+    SDL_Renderer *bo_ve;        // Bộ vẽ SDL
+    BoiCanhRan boi_canh_ran;    // Bối cảnh trò chơi rắn
+    Uint64 buoc_cuoi_cung;      // Thời gian bước cuối cùng
+};
+
+// Hàm lấy loại ô tại vị trí (x, y)
+LoaiORan lay_o_ran_tai(const BoiCanhRan *boi_canh, char x, char y)
+{
+    const int dich_chuyen = DICH_CHUYEN(x, y);
+    unsigned short pham_vi;
+    SDL_memcpy(&pham_vi, boi_canh->cac_o_ran + (dich_chuyen / 8), sizeof(pham_vi));
+    return static_cast<LoaiORan>((pham_vi >> (dich_chuyen % 8)) & BIT_THIET_LAP_O_RAN);
+}
+
+// Hàm thiết lập tọa độ hình chữ nhật
+static void thiet_lap_toa_do_hinh_chu_nhat(SDL_FRect *hinh_chu_nhat, short x, short y)
+{
+    hinh_chu_nhat->x = static_cast<float>(x * KICH_THUOC_KHOI_RAN_PIXEL);
+    hinh_chu_nhat->y = static_cast<float>(y * KICH_THUOC_KHOI_RAN_PIXEL);
+}
+
+// Hàm đặt loại ô tại vị trí (x, y)
+static void dat_o_tai(BoiCanhRan *boi_canh, char x, char y, LoaiORan loai_o)
+{
+    const int dich_chuyen = DICH_CHUYEN(x, y);
+    const int dieu_chinh = dich_chuyen % 8;
+    unsigned char *const vi_tri = boi_canh->cac_o_ran + (dich_chuyen / 8);
+    unsigned short pham_vi;
+    SDL_memcpy(&pham_vi, vi_tri, sizeof(pham_vi));
+    pham_vi &= ~(BIT_THIET_LAP_O_RAN << dieu_chinh); // xóa bits
+    pham_vi |= (static_cast<unsigned>(loai_o) & BIT_THIET_LAP_O_RAN) << dieu_chinh;
+    SDL_memcpy(vi_tri, &pham_vi, sizeof(pham_vi));
+}
+
+// Kiểm tra xem tất cả ô đã đầy chưa
+static bool tat_ca_o_da_day(BoiCanhRan *boi_canh)
+{
+    return boi_canh->so_o_da_chiem == CHIEU_RONG_TRAN_DAU * CHIEU_CAO_TRAN_DAU;
+}
+
+// Tạo vị trí thức ăn mới ngẫu nhiên
+static void tao_vi_tri_thuc_an_moi(BoiCanhRan *boi_canh)
+{
+    while (true) {
+        const char x = static_cast<char>(SDL_rand(CHIEU_RONG_TRAN_DAU));
+        const char y = static_cast<char>(SDL_rand(CHIEU_CAO_TRAN_DAU));
+        if (lay_o_ran_tai(boi_canh, x, y) == LoaiORan::KHONG_CO_GI) {
+            dat_o_tai(boi_canh, x, y, LoaiORan::THUC_AN);
+            break;
+        }
+    }
+}
+
+// Khởi tạo trò chơi rắn
+void khoi_tao_ran(BoiCanhRan *boi_canh)
+{
+    SDL_zeroa(boi_canh->cac_o_ran);
+    
+    // Đặt rắn ở giữa màn hình
+    boi_canh->vi_tri_dau_x = boi_canh->vi_tri_duoi_x = CHIEU_RONG_TRAN_DAU / 2;
+    boi_canh->vi_tri_dau_y = boi_canh->vi_tri_duoi_y = CHIEU_CAO_TRAN_DAU / 2;
+    boi_canh->huong_tiep_theo = static_cast<char>(HuongDiChuyen::SANG_PHAI);
+    boi_canh->cam_buoc_duoi = boi_canh->so_o_da_chiem = 4;
+    --boi_canh->so_o_da_chiem;
+    
+    // Đặt thân rắn ban đầu
+    dat_o_tai(boi_canh, boi_canh->vi_tri_duoi_x, boi_canh->vi_tri_duoi_y, LoaiORan::RAN_SANG_PHAI);
+    
+    // Tạo 4 thức ăn ban đầu
+    for (int i = 0; i < 4; i++) {
+        tao_vi_tri_thuc_an_moi(boi_canh);
+        ++boi_canh->so_o_da_chiem;
+    }
+}
+
+// Thay đổi hướng di chuyển của rắn
+void doi_huong_ran(BoiCanhRan *boi_canh, HuongDiChuyen huong_moi)
+{
+    LoaiORan loai_o_hien_tai = lay_o_ran_tai(boi_canh, boi_canh->vi_tri_dau_x, boi_canh->vi_tri_dau_y);
+    
+    // Kiểm tra không cho rắn đi ngược lại
+    if ((huong_moi == HuongDiChuyen::SANG_PHAI && loai_o_hien_tai != LoaiORan::RAN_SANG_TRAI) ||
+        (huong_moi == HuongDiChuyen::DI_LEN && loai_o_hien_tai != LoaiORan::RAN_DI_XUONG) ||
+        (huong_moi == HuongDiChuyen::SANG_TRAI && loai_o_hien_tai != LoaiORan::RAN_SANG_PHAI) ||
+        (huong_moi == HuongDiChuyen::DI_XUONG && loai_o_hien_tai != LoaiORan::RAN_DI_LEN)) {
+        boi_canh->huong_tiep_theo = static_cast<char>(huong_moi);
+    }
+}
+
+// Xử lý việc quay vòng khi ra khỏi biên
+static void xu_ly_quay_vong(char *gia_tri, char gia_tri_max)
+{
+    if (*gia_tri < 0) {
+        *gia_tri = gia_tri_max - 1;
+    } else if (*gia_tri > gia_tri_max - 1) {
+        *gia_tri = 0;
+    }
+}
+
+// Thực hiện một bước di chuyển của rắn
+void buoc_di_ran(BoiCanhRan *boi_canh)
+{
+    const LoaiORan huong_thanh_o = static_cast<LoaiORan>(boi_canh->huong_tiep_theo + 1);
+    LoaiORan loai_o;
+    char vi_tri_x_cu;
+    char vi_tri_y_cu;
+    
+    // Di chuyển đuôi về phía trước
+    if (--boi_canh->cam_buoc_duoi == 0) {
+        ++boi_canh->cam_buoc_duoi;
+        loai_o = lay_o_ran_tai(boi_canh, boi_canh->vi_tri_duoi_x, boi_canh->vi_tri_duoi_y);
+        dat_o_tai(boi_canh, boi_canh->vi_tri_duoi_x, boi_canh->vi_tri_duoi_y, LoaiORan::KHONG_CO_GI);
+        
+        switch (loai_o) {
+        case LoaiORan::RAN_SANG_PHAI:
+            boi_canh->vi_tri_duoi_x++;
+            break;
+        case LoaiORan::RAN_DI_LEN:
+            boi_canh->vi_tri_duoi_y--;
+            break;
+        case LoaiORan::RAN_SANG_TRAI:
+            boi_canh->vi_tri_duoi_x--;
+            break;
+        case LoaiORan::RAN_DI_XUONG:
+            boi_canh->vi_tri_duoi_y++;
+            break;
+        default:
+            break;
+        }
+        xu_ly_quay_vong(&boi_canh->vi_tri_duoi_x, CHIEU_RONG_TRAN_DAU);
+        xu_ly_quay_vong(&boi_canh->vi_tri_duoi_y, CHIEU_CAO_TRAN_DAU);
+    }
+    
+    // Di chuyển đầu về phía trước
+    vi_tri_x_cu = boi_canh->vi_tri_dau_x;
+    vi_tri_y_cu = boi_canh->vi_tri_dau_y;
+    
+    switch (static_cast<HuongDiChuyen>(boi_canh->huong_tiep_theo)) {
+    case HuongDiChuyen::SANG_PHAI:
+        ++boi_canh->vi_tri_dau_x;
+        break;
+    case HuongDiChuyen::DI_LEN:
+        --boi_canh->vi_tri_dau_y;
+        break;
+    case HuongDiChuyen::SANG_TRAI:
+        --boi_canh->vi_tri_dau_x;
+        break;
+    case HuongDiChuyen::DI_XUONG:
+        ++boi_canh->vi_tri_dau_y;
+        break;
+    }
+    
+    xu_ly_quay_vong(&boi_canh->vi_tri_dau_x, CHIEU_RONG_TRAN_DAU);
+    xu_ly_quay_vong(&boi_canh->vi_tri_dau_y, CHIEU_CAO_TRAN_DAU);
+    
+    // Xử lý va chạm
+    loai_o = lay_o_ran_tai(boi_canh, boi_canh->vi_tri_dau_x, boi_canh->vi_tri_dau_y);
+    if (loai_o != LoaiORan::KHONG_CO_GI && loai_o != LoaiORan::THUC_AN) {
+        // Va chạm với thân rắn - khởi tạo lại game
+        khoi_tao_ran(boi_canh);
+        return;
+    }
+    
+    // Cập nhật vị trí mới
+    dat_o_tai(boi_canh, vi_tri_x_cu, vi_tri_y_cu, huong_thanh_o);
+    dat_o_tai(boi_canh, boi_canh->vi_tri_dau_x, boi_canh->vi_tri_dau_y, huong_thanh_o);
+    
+    // Xử lý ăn thức ăn
+    if (loai_o == LoaiORan::THUC_AN) {
+        if (tat_ca_o_da_day(boi_canh)) {
+            // Thắng game - khởi tạo lại
+            khoi_tao_ran(boi_canh);
+            return;
+        }
+        tao_vi_tri_thuc_an_moi(boi_canh);
+        ++boi_canh->cam_buoc_duoi;  // Tăng độ dài rắn
+        ++boi_canh->so_o_da_chiem;
+    }
+}
+
+// Xử lý sự kiện bàn phím
+static SDL_AppResult xu_ly_su_kien_ban_phim(BoiCanhRan *boi_canh, SDL_Scancode ma_phim)
+{
+    switch (ma_phim) {
+    case SDL_SCANCODE_ESCAPE: // Thoát game
+    case SDL_SCANCODE_Q:
+        return SDL_APP_SUCCESS;
+    case SDL_SCANCODE_R: // Khởi động lại game
+        khoi_tao_ran(boi_canh);
+        break;
+    case SDL_SCANCODE_RIGHT: // Di chuyển sang phải
+        doi_huong_ran(boi_canh, HuongDiChuyen::SANG_PHAI);
+        break;
+    case SDL_SCANCODE_UP: // Di chuyển lên
+        doi_huong_ran(boi_canh, HuongDiChuyen::DI_LEN);
+        break;
+    case SDL_SCANCODE_LEFT: // Di chuyển sang trái
+        doi_huong_ran(boi_canh, HuongDiChuyen::SANG_TRAI);
+        break;
+    case SDL_SCANCODE_DOWN: // Di chuyển xuống
+        doi_huong_ran(boi_canh, HuongDiChuyen::DI_XUONG);
+        break;
+    default:
+        break;
+    }
+    return SDL_APP_CONTINUE;
+}
+
+// Xử lý sự kiện tay cầm (D-pad)
+static SDL_AppResult xu_ly_su_kien_tay_cam(BoiCanhRan *boi_canh, Uint8 nut_hat) {
+    switch (nut_hat) {
+    case SDL_HAT_RIGHT: // Tay cầm sang phải
+        doi_huong_ran(boi_canh, HuongDiChuyen::SANG_PHAI);
+        break;
+    case SDL_HAT_UP: // Tay cầm lên
+        doi_huong_ran(boi_canh, HuongDiChuyen::DI_LEN);
+        break;
+    case SDL_HAT_LEFT: // Tay cầm sang trái
+        doi_huong_ran(boi_canh, HuongDiChuyen::SANG_TRAI);
+        break;
+    case SDL_HAT_DOWN: // Tay cầm xuống
+        doi_huong_ran(boi_canh, HuongDiChuyen::DI_XUONG);
+        break;
+    default:
+        break;
+    }
+    return SDL_APP_CONTINUE;
+}
+
+// Vòng lặp chính của game
+SDL_AppResult SDL_AppIterate(void *trang_thai_ung_dung)
+{
+    auto *ttud = static_cast<TrangThaiUngDung *>(trang_thai_ung_dung);
+    BoiCanhRan *boi_canh = &ttud->boi_canh_ran;
+    const Uint64 thoi_gian_hien_tai = SDL_GetTicks();
+    SDL_FRect hinh_chu_nhat;
+    unsigned i, j;
+    LoaiORan loai_o;
+
+    // Chạy logic game nếu đã đến thời gian
+    // Nếu chậm quá, chạy nhiều lần để bắt kịp
+    while ((thoi_gian_hien_tai - ttud->buoc_cuoi_cung) >= TOC_DO_BUOC_MILI_GIAY) {
+        buoc_di_ran(boi_canh);
+        ttud->buoc_cuoi_cung += TOC_DO_BUOC_MILI_GIAY;
+    }
+
+    // Vẽ game
+    hinh_chu_nhat.w = hinh_chu_nhat.h = KICH_THUOC_KHOI_RAN_PIXEL;
+    SDL_SetRenderDrawColor(ttud->bo_ve, 0, 0, 0, SDL_ALPHA_OPAQUE); // Màu nền đen
+    SDL_RenderClear(ttud->bo_ve);
+    
+    // Vẽ từng ô trong game
+    for (i = 0; i < CHIEU_RONG_TRAN_DAU; i++) {
+        for (j = 0; j < CHIEU_CAO_TRAN_DAU; j++) {
+            loai_o = lay_o_ran_tai(boi_canh, i, j);
+            if (loai_o == LoaiORan::KHONG_CO_GI)
+                continue;
+                
+            thiet_lap_toa_do_hinh_chu_nhat(&hinh_chu_nhat, i, j);
+            
+            if (loai_o == LoaiORan::THUC_AN)
+                SDL_SetRenderDrawColor(ttud->bo_ve, 80, 80, 255, SDL_ALPHA_OPAQUE); // Thức ăn màu xanh dương
+            else // thân rắn
+                SDL_SetRenderDrawColor(ttud->bo_ve, 0, 128, 0, SDL_ALPHA_OPAQUE); // Thân rắn màu xanh lá
+                
+            SDL_RenderFillRect(ttud->bo_ve, &hinh_chu_nhat);
+        }
+    }
+    
+    // Vẽ đầu rắn màu vàng
+    SDL_SetRenderDrawColor(ttud->bo_ve, 255, 255, 0, SDL_ALPHA_OPAQUE);
+    thiet_lap_toa_do_hinh_chu_nhat(&hinh_chu_nhat, boi_canh->vi_tri_dau_x, boi_canh->vi_tri_dau_y);
+    SDL_RenderFillRect(ttud->bo_ve, &hinh_chu_nhat);
+    SDL_RenderPresent(ttud->bo_ve);
+    
+    return SDL_APP_CONTINUE;
+}
+
+// Metadata mở rộng
+static const struct
+{
+    const char *khoa;     // Khóa metadata
+    const char *gia_tri; // Giá trị metadata
+} metadata_mo_rong[] =
+{
+    { SDL_PROP_APP_METADATA_URL_STRING, "https://examples.libsdl.org/SDL3/demo/01-snake/" },
+    { SDL_PROP_APP_METADATA_CREATOR_STRING, "SDL team" },
+    { SDL_PROP_APP_METADATA_COPYRIGHT_STRING, "Placed in the public domain" },
+    { SDL_PROP_APP_METADATA_TYPE_STRING, "game" }
+};
+
+// Khởi tạo ứng dụng
+SDL_AppResult SDL_AppInit(void **trang_thai_ung_dung, int so_tham_so, char *cac_tham_so[])
+{
+    // Thiết lập metadata ứng dụng
+    if (!SDL_SetAppMetadata("Example Snake game", "1.0", "com.example.Snake")) {
+        return SDL_APP_FAILURE;
+    }
+
+    for (size_t i = 0; i < SDL_arraysize(metadata_mo_rong); i++) {
+        if (!SDL_SetAppMetadataProperty(metadata_mo_rong[i].khoa, metadata_mo_rong[i].gia_tri)) {
+            return SDL_APP_FAILURE;
+        }
+    }
+
+    // Khởi tạo SDL
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK)) {
+        SDL_Log("Không thể khởi tạo SDL: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+
+    // Tạo trạng thái ứng dụng
+    auto *ttud = static_cast<TrangThaiUngDung *>(SDL_calloc(1, sizeof(TrangThaiUngDung)));
+    if (!ttud) {
+        return SDL_APP_FAILURE;
+    }
+
+    *trang_thai_ung_dung = ttud;
+
+    // Tạo cửa sổ và bộ vẽ
+    if (!SDL_CreateWindowAndRenderer("examples/demo/snake", CHIEU_RONG_CUA_SO, CHIEU_CAO_CUA_SO, 0, &ttud->cua_so, &ttud->bo_ve)) {
+        return SDL_APP_FAILURE;
+    }
+
+    // Khởi tạo game
+    khoi_tao_ran(&ttud->boi_canh_ran);
+    ttud->buoc_cuoi_cung = SDL_GetTicks();
+
+    return SDL_APP_CONTINUE;
+}
+
+// Xử lý sự kiện
+SDL_AppResult SDL_AppEvent(void *trang_thai_ung_dung, SDL_Event *su_kien)
+{
+    BoiCanhRan *boi_canh = &static_cast<TrangThaiUngDung *>(trang_thai_ung_dung)->boi_canh_ran;
+    
+    switch (su_kien->type) {
+    case SDL_EVENT_QUIT: // Sự kiện thoát
+        return SDL_APP_SUCCESS;
+    case SDL_EVENT_JOYSTICK_ADDED: // Tay cầm được kết nối
+        if (tay_cam == nullptr) {
+            tay_cam = SDL_OpenJoystick(su_kien->jdevice.which);
+            if (!tay_cam) {
+                SDL_Log("Không thể mở tay cầm ID %u: %s", 
+                       static_cast<unsigned int>(su_kien->jdevice.which), SDL_GetError());
+            }
+        }
+        break;
+    case SDL_EVENT_JOYSTICK_REMOVED: // Tay cầm bị ngắt kết nối
+        if (tay_cam && (SDL_GetJoystickID(tay_cam) == su_kien->jdevice.which)) {
+            SDL_CloseJoystick(tay_cam);
+            tay_cam = nullptr;
+        }
+        break;
+    case SDL_EVENT_JOYSTICK_HAT_MOTION: // Sự kiện tay cầm
+        return xu_ly_su_kien_tay_cam(boi_canh, su_kien->jhat.value);
+    case SDL_EVENT_KEY_DOWN: // Sự kiện bàn phím
+        return xu_ly_su_kien_ban_phim(boi_canh, su_kien->key.scancode);
+    default:
+        break;
+    }
+    return SDL_APP_CONTINUE;
+}
+
+// Dọn dẹp khi thoát ứng dụng
+void SDL_AppQuit(void *trang_thai_ung_dung, SDL_AppResult ket_qua)
+{
+    if (tay_cam) {
+        SDL_CloseJoystick(tay_cam);
+    }
+    
+    if (trang_thai_ung_dung != nullptr) {
+        auto *ttud = static_cast<TrangThaiUngDung *>(trang_thai_ung_dung);
+        SDL_DestroyRenderer(ttud->bo_ve);
+        SDL_DestroyWindow(ttud->cua_so);
+        SDL_free(ttud);
+    }
+}
