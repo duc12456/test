@@ -1,5 +1,7 @@
 /* snake.cpp - Trò chơi rắn săn mồi */
 
+/* link setup SDL3: https://www.youtube.com/watch?v=ZY3jhIQpqjA
+/* link download animation tham khảo: itch.io
 /*
  * Triển khai logic của trò chơi Snake. Được thiết kế để biểu diễn hiệu quả
  * trạng thái của trò chơi trong bộ nhớ.
