@@ -4,6 +4,7 @@
 // link khởi tạo cài SDL3 vào ổ c: gcc snake.cpp -o snake.exe -I "C:\SDL3\x86_64-w64-mingw32\include" + ENTER
 // gcc snake.cpp -o snake.exe -I "C:\SDL3\x86_64-w64-mingw32\include" -L "C:\SDL3\x86_64-w64-mingw32\lib" + ENTER
 // gcc snake.cpp -o snake.exe -I "C:\SDL3\x86_64-w64-mingw32\include" -L "C:\SDL3\x86_64-w64-mingw32\lib" -lSDL3
+// copy file SDL3.dll vào file chứa file game mới chạy được, khi chạy trong terminal dùng lệnh ./snake.exe game tự mở nhé
 
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
