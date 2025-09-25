@@ -1,315 +1,304 @@
-#include <conio.h>
-#include<iostream>
-#include <windows.h>
-#include "mylib.h"
-#define MAX 100
+#include <iostream>
+#include <raylib.h>
+#include <deque>
+#include <raymath.h>
+#include "button.hpp"
 
 using namespace std;
 
-int s1 = 7;
+Color green = {173, 204, 96, 255};
+Color darkgreen = {43, 51, 24, 255};
 
-// Khai báo hàm 
-void ve_tuong_tren();
-void ve_tuong_duoi();
-void ve_tuong_phai();
-void ve_tuong_trai();
-void ve_tuong();
-void khoi_tao_ran(int toadox[], int toadoy[]);
-void xoa_du_lieu_cu(int toadox[], int toadoy[]);
-void ve_ran(int toadox[], int toadoy[]);
-void xu_ly_ran(int toadox[], int toadoy[], int x, int y,int &xqua, int &yqua);
-void them(int a[], int x);
-void xoa(int a[], int vt);
-bool kt_ran_cham_tuong(int x0, int y0);
-bool kt_ran_cham_duoi(int toadox[], int toadoy[]);
-bool kt_ran(int toadox[], int toadoy[]);
-void tao_qua(int& xqua, int& yqua, int toadox[], int toadoy[]);
-bool kt_ran_de_qua(int xqua, int yqua, int toadox[], int toadoy[]);
-bool kt_ran_an_qua(int xqua, int yqua, int x0, int y0);
-// =====================ham main - xu ly chinh ==============
-int main()
+int kichThuocO = 25; //cellsize
+int SoOtrongMoiHangCot = 20; //cellcount
+int offset = 62.5;
+
+
+double lastUpdateTime = 0;
+
+bool ElementInDeque(Vector2 element, deque<Vector2> deque)
 {
-    
-
-    bool gameover = false;
-
-    int toadox[MAX], toadoy[MAX];
-    ve_tuong();
-    khoi_tao_ran(toadox, toadoy);
-    ve_ran(toadox, toadoy);
-    //=============ktra va tao qua=====================
-    srand(time(NULL));
-    int xqua = 0, yqua = 0;
-
-    tao_qua(xqua, yqua, toadox, toadoy);
-    int x = 50, y = 13;// ding hinh vi tri can di chuyen cho ran
-    int check = 2;
-    while (gameover == false)
+    for(unsigned int i = 0; i < deque.size(); i++)
     {
-
-        // system("cls")
-         // ==== backspace
-        xoa_du_lieu_cu(toadox, toadoy);
-
-        // 0 : di xuong
-        // 1 : di len
-        // 2 : qua phai
-        // 3 : qua trai
-        // ===== dieu kien
-        if (_kbhit())
+        if(Vector2Equals(deque[i], element))
         {
-            char kitu = _getch();
-            if (kitu == -32)
-            {
-                kitu = _getch();
-                if (kitu == 72 && check != 0) //di len
-                {
-                    check = 1;
-                }
-                else if (kitu == 80 && check != 1) // di xuong
-                {
-                    check = 0;
-                }
-                else if (kitu == 77 && check != 3)// di phai
-                {
-                    check = 2;
-                }
-                else if (kitu == 75 && check != 2)// qua trai
-                {
-                    check = 3;
-                }
-            }
+            return true;
         }
-        // ====== thuc hien di chuyen
-        if (check == 0)
+    }
+    return false;
+}
+
+bool eventTriggered(double interval)
+{
+    double currentTime = GetTime();
+    if(currentTime - lastUpdateTime >= interval)
+    {
+        lastUpdateTime = currentTime;
+        return true;
+    }
+    return false;
+}
+
+class Snake
+{
+public:
+    deque<Vector2> body = {Vector2{6,9}, Vector2{5,9}, Vector2{4,9}};
+    Vector2 direction = {1, 0};
+    bool addSegment = false;
+
+    void Draw()
+    {
+        for(unsigned int i = 0; i < body.size(); i++)
         {
-            y++;//di xuong
+            float x = body[i].x;
+            float y = body[i].y;
+            Rectangle segment = Rectangle{offset + x * kichThuocO, offset + y * kichThuocO, (float)kichThuocO, (float)kichThuocO};
+            DrawRectangleRounded(segment, 0.5, 6, darkgreen);
         }
-        else if (check == 1)
+    }
+
+    void Update()
+    {
+        body.push_front(Vector2Add(body[0], direction));
+        if(addSegment == true)
         {
-            y--;//di len
-        }
-        else if (check == 2)
-        {
-            x++; //di qua phai
-        }
-        else if (check == 3)
-        {
-            x--;//di qua trai
-        }
-        xu_ly_ran(toadox, toadoy, x, y,xqua,yqua);
-        gameover = kt_ran(toadox, toadoy);
-            Sleep(150);
-    }
-    _getch(); // ch? nh?n phím
-    return 0;
-}
-
-void ve_tuong_tren()
-{
-    int x = 10, y = 1;
-    while (x <= 100)
-    {
-        gotoXY(x, y);
-        cout << "*";
-        x++;
-    }
-}
-
-void ve_tuong_duoi()
-{
-    int x = 10, y = 26;
-    while (x <= 100)
-    {
-        gotoXY(x, y);
-        cout << "*";
-        x++;
-    }
-}
-
-void ve_tuong_phai()
-{
-    int x = 100, y = 1;
-    while (y <= 26)
-    {
-        gotoXY(x, y);
-        cout << "*";
-        y++;
-    }
-}
-
-void ve_tuong_trai()
-{
-    int x = 10, y = 1;
-    while (y <= 26)
-    {
-        gotoXY(x, y);
-        cout << "*";
-        y++;
-    }
-}
-
-void ve_tuong()
-{
-    SetColor(11);
-    ve_tuong_tren();
-    ve_tuong_duoi();
-    ve_tuong_phai();
-    ve_tuong_trai();
-    SetColor(7);
-}
-
-void khoi_tao_ran(int toadox[], int toadoy[])
-{
-    int x = 50, y = 13;
-    for (int i = 0; i < s1; i++)
-    {
-        toadox[i] = x;
-        toadoy[i] = y;
-        x--;
-    }
-}
-
-void ve_ran(int toadox[], int toadoy[])
-{
-    for (int i = 0; i < s1; i++)
-    {
-        gotoXY(toadox[i], toadoy[i]);
-        if (i == 0)
-        {
-            cout << "0";
+            addSegment = false;
         }
         else
+        {  
+            body.pop_back();
+        }
+
+    }
+
+    void Reset()
+    {
+        body = {Vector2{6, 9}, Vector2{5, 9}, Vector2{4, 9}};
+        direction = {1, 0};
+    }
+};
+
+class Food // Tao do an cho ran
+{
+public:
+    Vector2 position; // vi tri tuong doi cua do an 
+    Texture2D texture;
+
+    Food(deque<Vector2> snakeBody)
+    {
+        Image image = LoadImage("Graphics/Food.png");
+        texture = LoadTextureFromImage(image);
+        UnloadImage(image);
+        position = GenerateRandomPos(snakeBody);
+    }
+
+    ~Food()
+    {
+        UnloadTexture(texture);
+    }
+
+    void Draw()
+    {
+        DrawTexture(texture, offset + position.x * kichThuocO, offset + position.y * kichThuocO, WHITE);
+        // ham nay cho ta biet can 4 doi so toa do x,y,rong,cao va mau sac cua vat can ve
+    }
+
+    Vector2 GenerateRandomCell()
+    {
+        float x = GetRandomValue(0, SoOtrongMoiHangCot - 1);
+        float y = GetRandomValue(0, SoOtrongMoiHangCot - 1);
+        return Vector2{x, y};
+    }
+
+    Vector2 GenerateRandomPos(deque<Vector2>snakeBody)
+    {
+        Vector2 position = GenerateRandomCell();
+
+        while(ElementInDeque(position, snakeBody))
         {
-            cout << "o";
+            position = GenerateRandomCell();
+        }
+        return position;
+    }
+
+};
+
+class Game
+{
+public:
+    Snake snake = Snake();
+    Food food = Food(snake.body);
+    bool running = true;
+    int score = 0;
+    Sound eatSound;
+    Sound wallSound;
+
+    bool isDead = false;
+    Game()
+    {
+        InitAudioDevice();
+        eatSound = LoadSound("Sound/eat.mp3");
+        wallSound = LoadSound("Sound/wall.mp3");
+    }
+
+    ~Game()
+    {
+        UnloadSound(eatSound);
+        UnloadSound(wallSound);
+        CloseAudioDevice();
+    }
+
+    void Draw()
+    {
+        food.Draw();
+        snake.Draw();
+    }
+
+    void Update()
+    {
+        if(running)
+        {
+            snake.Update();
+            CheckCollisionWithFood();
+            CheckCollisionWithEdges();
+            CheckCollisionWithTail();
         }
     }
-}
-void xoa_du_lieu_cu(int toadox[], int toadoy[])
-{
-    for (int i = 0; i < s1; i++)
-    {
-        gotoXY(toadox[i], toadoy[i]);
-        cout << " ";
-    }
-}
-void xu_ly_ran(int toadox[], int toadoy[], int x, int y,int &xqua,int &yqua)
-{
-    //b1: them toa do moi vao dau mang
-    them(toadox, x);
-    them(toadoy, y);
-    if (kt_ran_an_qua(xqua, yqua, toadox[0], toadoy[0]) == false)
-    {
-        //b2: xoa toa do cuoi mang
-        xoa(toadox, s1 - 1);
-        xoa(toadoy, s1 - 1);
-    }
-    else
-    {
-        tao_qua(xqua, yqua, toadox, toadoy);
-    }
-    //b3: ve ran
-    ve_ran(toadox, toadoy);
-    
-}
-void them(int a[], int x)
-{
-    for (int i = s1; i > 0; i--)
-    {
-        a[i] = a[i - 1];
-    }
-    a[0] = x;
-    s1++;
-}
-void xoa(int a[], int vt)
-{
-    for (int i = vt; i < s1; i++)
-    {
-        a[i] = a[i + 1];
-    }
-    s1--;
-}
-bool kt_ran_cham_tuong(int x0, int y0)
-{
-    if (y0 == 1 && (x0 >= 10 && x0 <= 100)) // ran cham tuong tren
-    {
-        return true; // gameover
-    }
-    else if (y0 == 26 && (x0 >= 10 && x0 <= 100)) // va cham tuong duoi
-    {
-        return true;
-    }
-    else if (x0 == 100 && (y0 >= 1 && y0 <= 26)) // va cham tuong trai
-    {
-        return true;
-    }
-    else if (x0 == 10 && (y0 >= 1 && y0 <= 26)) // va cham tuong phai
-    {
-        return true;
-    }
-    return false;
-}
 
-bool kt_ran_cham_duoi(int toadox[], int toadoy[])
-{
-    for (int i = 1; i < s1; i++)
+    void CheckCollisionWithFood()
     {
-        if ((toadox[0] == toadox[i]) && (toadoy[0] == toadoy[i]))
+        if(Vector2Equals(snake.body[0], food.position))
         {
-            return true; // gameover
+            food.position = food.GenerateRandomPos(snake.body);
+            snake.addSegment = true;
+            score++;
+            PlaySound(eatSound);
         }
     }
-    return false;
-}
 
-bool kt_ran(int toadox[], int toadoy[]) // ham ktra ran can duoi va dam vao tuong
-{
-    bool kt1 = kt_ran_cham_duoi(toadox, toadoy); // gameover = true
-    bool kt2 = kt_ran_cham_tuong(toadox[0], toadoy[0]); // gameover = false
-    if (kt1 == true || kt2 == true)
+    void CheckCollisionWithEdges()
     {
-        return true; // gameover
-    }
-    return false;
-}
-
-// srand(time(null)); reset seed random ngau nhien;
-// rand()%(b - a + 1)+a; = random 1 so trong doan tu a den b;
-// pham vi qua 11 <= xqua <= 99 va 2 <= yqua <= 25
-// doi voi xqua = rand() % (99 - 11 + 1) + 11;
-// doi voi yqua = rand() % (25 - 2 + 1) + 2;
-
-void tao_qua(int &xqua, int &yqua,int toadox[], int toadoy[])
-{
-    
-    do
-    {
-        xqua = rand() % (99 - 11 + 1) + 11; //11 <= xqua <= 99
-        yqua = rand() % (25 - 2 + 1) + 2; // 2 <= yqua <= 25
-
-    } while (kt_ran_de_qua(xqua, yqua, toadox, toadoy)==true);
-    int i = rand() % (15 - 1 + 1) + 1;
-    SetColor(i);
-    gotoXY(xqua, yqua);
-    cout << "$";
-    SetColor(7);//mautrang
-}
-bool kt_ran_de_qua(int xqua, int yqua, int toadox[], int toadoy[])
-{
-    for (int i = 0; i < s1; i++)
-    {
-        if (xqua == toadox[i] && (yqua == toadoy[i]))
+        if(snake.body[0].x == SoOtrongMoiHangCot || snake.body[0].x == -1)
         {
-            return true;//ran de len qua
+            GameOver();
+        }
+
+        if(snake.body[0].y == SoOtrongMoiHangCot || snake.body[0].y == -1)
+        {
+            GameOver();
         }
     }
-    return false;
-}
-bool kt_ran_an_qua(int xqua,int yqua,int x0,int y0)
-{
-    if ((x0 == xqua) && (y0 == yqua))
+
+    void GameOver()
     {
-        return true;//ran an qua
+        PlaySound(wallSound);
+        running = false;
+        isDead = true;  
     }
-    return false;
+
+    void CheckCollisionWithTail()
+    {
+        deque<Vector2> headlessBody = snake.body;
+        headlessBody.pop_front();
+        if(ElementInDeque(snake.body[0], headlessBody))
+        {
+            GameOver();
+        }
+    }
+};
+enum GameScreen{MENU,GAME};
+int main () 
+{
+    cout << "Starting the game..." <<endl;
+    InitWindow(2 * offset +kichThuocO * SoOtrongMoiHangCot,2 * offset + kichThuocO * SoOtrongMoiHangCot, "Snake Game"); // cần 3 đối số: chiều rộng, chiều cao và tiêu đề - hàm khởi tạo cửa số
+    SetTargetFPS(60); // tốc độ khung hình trên giây
+
+    Texture2D menubackground = LoadTexture("graphics/background.png");
+    Button startButton{"graphics/play.png", {10, 300}, 9.5};
+    Button exitButton{"graphics/exit.png",{350,200},9.5};
+
+    Game game = Game();
+
+    GameScreen currentScreen = MENU;   // bắt đầu ở MENU
+
+    // khoi tao vong lap game
+    while(WindowShouldClose() == false) // đây là hàm kiểm tra xem phím escape hay biểu tượng đóng có được nhấn hay không
+    {
+        Vector2 mousePosition = GetMousePosition();
+        bool mousePressed= IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        if(startButton.isPressed(mousePosition,mousePressed))
+        {
+            // Start new game
+        game.snake.Reset();
+        game.food.position = game.food.GenerateRandomPos(game.snake.body);
+        game.score = 0;
+        game.isDead = false;
+        game.running = true;
+        currentScreen = GAME;
+        }
+        if(exitButton.isPressed(mousePosition,mousePressed))
+        {
+            break;
+        }
+        BeginDrawing(); //khởi tạo khung trống để vẽ mọi thứ trong game;
+
+        if (currentScreen == MENU) {
+            ClearBackground(green);
+            DrawTexture(menubackground, 0, 0, WHITE);
+            startButton.Draw();
+            exitButton.Draw();
+        }
+        else if (currentScreen == GAME ) {
+            if(eventTriggered(0.2))
+        {
+            game.Update();
+        }
+
+        if(IsKeyPressed(KEY_UP) && game.snake.direction.y != 1)
+        {
+            game.snake.direction = {0, -1};
+            game.running = true;
+        }
+        
+        if(IsKeyPressed(KEY_DOWN) && game.snake.direction.y != -1)
+        {
+            game.snake.direction = {0, 1};
+            game.running = true;
+        }
+
+        if(IsKeyPressed(KEY_LEFT) && game.snake.direction.x != 1)
+        {
+            game.snake.direction = {-1, 0};
+            game.running = true;
+        }
+
+        if(IsKeyPressed(KEY_RIGHT) && game.snake.direction.x != -1)
+        {
+            game.snake.direction = {1, 0};
+            game.running = true;
+        }
+
+        //Ve
+        ClearBackground(green); // xoa nen cua so
+        
+       
+        DrawRectangleLinesEx(Rectangle{(float)offset - 5, (float)offset - 5, (float)SoOtrongMoiHangCot * kichThuocO + 10, (float)SoOtrongMoiHangCot * kichThuocO + 10}, 5, darkgreen);
+
+        DrawText("Snake Game", offset - 5, 20, 40, darkgreen);
+        DrawText(TextFormat("%i", game.score), offset - 5, offset + 5 + SoOtrongMoiHangCot * kichThuocO, 40, darkgreen);
+        game.Draw();
+        // === THÊM NẾU MUỐN VỀ MENU KHI THUA ===
+            if (game.isDead)
+        {
+            currentScreen = MENU;
+        }
+
+        }
+
+        EndDrawing();// ngược với begin
+    }
+
+
+    CloseWindow(); // đóng cửa sổ
+    return 0;
 }
