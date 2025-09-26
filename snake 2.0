@@ -1,757 +1,304 @@
 #include <iostream>
-#include <windows.h>
-#include <cstdlib>
-#include <ctime>
-#include <string>
-#include <conio.h>
-#include <fstream>
-#include <vector>
-
-#define MAX 500
+#include <raylib.h>
+#include <deque>
+#include <raymath.h>
+#include "button.hpp"
 
 using namespace std;
 
-// Biến toàn cục
-int s1 = 7;
-int diem = 0;
-int tocdo = 150;
-int highScore = 0;
-bool pauseGame = false;
-int level = 1;
-int specialFoodTimer = 0;
-bool showParticles = false;
-vector<pair<int, int>> particles;
+Color green = {173, 204, 96, 255};
+Color darkgreen = {43, 51, 24, 255};
 
-// Hàm thay thế mylib.h
-void gotoXY(int x, int y) {
-    COORD coord;
-    coord.X = x;
-    coord.Y = y;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-}
+int kichThuocO = 25; //cellsize
+int SoOtrongMoiHangCot = 20; //cellcount
+int offset = 62.5;
 
-void SetColor(int color) {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
-}
 
-void HideCursor() {
-    CONSOLE_CURSOR_INFO cursorInfo;
-    GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
-    cursorInfo.bVisible = false;
-    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
-}
+double lastUpdateTime = 0;
 
-// Khai báo hàm
-void veMenuChinh();
-void veHieuUngMau();
-void veTieuDe();
-void veKhungGame();
-void veThongTin();
-void veTuongTren();
-void veTuongDuoi();
-void veTuongPhai();
-void veTuongTrai();
-void veTuong();
-void khoiTaoRan(int toadox[], int toadoy[]);
-void xoaDuLieuCu(int toadox[], int toadoy[]);
-void veRan(int toadox[], int toadoy[]);
-void xuLyRan(int toadox[], int toadoy[], int x, int y, int& xqua, int& yqua, int& xSpecial, int& ySpecial);
-void them(int a[], int x);
-void xoa(int a[], int vt);
-bool ktRanChamTuong(int x0, int y0);
-bool ktRanChamDuoi(int toadox[], int toadoy[]);
-bool ktRan(int toadox[], int toadoy[]);
-void taoQua(int& xqua, int& yqua, int toadox[], int toadoy[]);
-void taoQuaDacBiet(int& xSpecial, int& ySpecial, int toadox[], int toadoy[]);
-bool ktRanDeQua(int xqua, int yqua, int toadox[], int toadoy[]);
-bool ktRanAnQua(int xqua, int yqua, int x0, int y0);
-void veGameOver();
-void vePause();
-void capNhatTocDo();
-void playGame();
-void veHuongDan();
-void veBangXepHang();
-void loadHighScore();
-void saveHighScore();
-void veHieuUngAnQua(int x, int y);
-void veParticles();
-void updateParticles();
-void veLevel();
-void vePixelBorder();
-void playSound(int frequency, int duration);
-
-// Hàm main
-int main()
+bool ElementInDeque(Vector2 element, deque<Vector2> deque)
 {
-    // Cấu hình console cho Visual Studio
-    system("mode con cols=120 lines=35");
-    SetConsoleTitleA("PIXEL SNAKE GAME - Phien Ban Pixel");
-    HideCursor();
-    
-    srand((unsigned int)time(NULL));
-    loadHighScore();
-    
-    while (true)
+    for(unsigned int i = 0; i < deque.size(); i++)
     {
-        system("cls");
-        veMenuChinh();
-        
-        char luaChon = _getch();
-        
-        switch (luaChon)
+        if(Vector2Equals(deque[i], element))
         {
-        case '1':
-            playGame();
-            break;
-        case '2':
-            veHuongDan();
-            break;
-        case '3':
-            veBangXepHang();
-            break;
-        case '4':
-            SetColor(7);
-            system("cls");
-            cout << "\n\n\t\t+================================+\n";
-            SetColor(14);
-            cout << "\t\t|   CAM ON BAN DA CHOI GAME!     |\n";
-            SetColor(13);
-            cout << "\t\t|      HEN GAP LAI LAN SAU!      |\n";
-            SetColor(11);
-            cout << "\t\t|         PIXEL GAME 2024        |\n";
-            SetColor(7);
-            cout << "\t\t+================================+\n\n";
-            Sleep(2000);
-            exit(0);
-            break;
-        default:
-            continue;
+            return true;
         }
     }
-    
-    return 0;
+    return false;
 }
 
-void veMenuChinh()
+bool eventTriggered(double interval)
 {
-    veTieuDe();
-    vePixelBorder();
-    
-    SetColor(11);
-    cout << "\n\t\t+==========================================+\n";
-    cout << "\t\t|            PIXEL MENU                    |\n";
-    cout << "\t\t+==========================================+\n";
-    SetColor(14);
-    cout << "\t\t|  1. ▶ Bat dau choi                      |\n";
-    SetColor(13);
-    cout << "\t\t|  2. ❓ Huong dan                        |\n";
-    SetColor(12);
-    cout << "\t\t|  3. 🏆 Bang xep hang                    |\n";
-    SetColor(9);
-    cout << "\t\t|  4. ❌ Thoat game                        |\n";
-    SetColor(11);
-    cout << "\t\t+==========================================+\n\n";
-    
-    SetColor(10);
-    cout << "\t\t*** High Score: " << highScore << " ***\n\n";
-    cout << "\t\t*** Nhan so de chon: ";
-    SetColor(7);
-}
-
-void vePixelBorder()
-{
-    SetColor(11);
-    cout << "\n\t\t";
-    for(int i = 0; i < 42; i++) {
-        cout << "█";
-        if(i % 2 == 0) Sleep(10);
-    }
-    cout << "\n\t\t█";
-    SetColor(12);
-    for(int i = 0; i < 40; i++) cout << " ";
-    SetColor(11);
-    cout << "█\n\t\t";
-    for(int i = 0; i < 42; i++) {
-        cout << "█";
-        if(i % 2 == 0) Sleep(5);
-    }
-    cout << "\n";
-    SetColor(7);
-}
-
-void veTieuDe()
-{
-    SetColor(14);
-    cout << "\n";
-    cout << "\t\t ██████  ██ ██   ██ ███████ ██      \n";
-    cout << "\t\t ██   ██ ██  ██ ██  ██      ██      \n";
-    SetColor(13);
-    cout << "\t\t ██████  ██   ███   █████   ██      \n";
-    cout << "\t\t ██      ██  ██ ██  ██      ██      \n";
-    SetColor(12);
-    cout << "\t\t ██      ██ ██   ██ ███████ ███████ \n";
-    SetColor(11);
-    cout << "\t\t     *** SNAKE - PIXEL EDITION ***\n";
-}
-
-void veHuongDan()
-{
-    system("cls");
-    SetColor(14);
-    cout << "\n\n\t\t╔══════════════════════════════════════════╗\n";
-    cout << "\t\t║          HUONG DAN CHOI GAME             ║\n";
-    cout << "\t\t╠══════════════════════════════════════════╣\n";
-    SetColor(11);
-    cout << "\t\t║ Cach dieu khien:                         ║\n";
-    cout << "\t\t║ ↑ Mui ten len    : Di chuyen len         ║\n";
-    cout << "\t\t║ ↓ Mui ten xuong  : Di chuyen xuong       ║\n";
-    cout << "\t\t║ ← Mui ten trai   : Di chuyen trai        ║\n";
-    cout << "\t\t║ → Mui ten phai   : Di chuyen phai        ║\n";
-    cout << "\t\t║ P Phim P         : Tam dung              ║\n";
-    cout << "\t\t║ ESC               : Thoat                ║\n";
-    SetColor(13);
-    cout << "\t\t║                                          ║\n";
-    cout << "\t\t║ Muc tieu:                                ║\n";
-    cout << "\t\t║ • An qua $ de tang diem (+10)            ║\n";
-    cout << "\t\t║ • An qua dac biet ★ de tang diem (+50)   ║\n";
-    cout << "\t\t║ • Tranh va cham vao tuong va than ran    ║\n";
-    cout << "\t\t║ • Moi 100 diem se tang level!            ║\n";
-    SetColor(14);
-    cout << "\t\t╚══════════════════════════════════════════╝\n\n";
-    SetColor(7);
-    cout << "\t\t\t[Nhan phim bat ky de quay lai]";
-    _getch();
-}
-
-void veBangXepHang()
-{
-    system("cls");
-    SetColor(14);
-    cout << "\n\n\t\t╔══════════════════════════════════════════╗\n";
-    cout << "\t\t║             BANG XEP HANG                ║\n";
-    cout << "\t\t╠══════════════════════════════════════════╣\n";
-    SetColor(11);
-    cout << "\t\t║                                          ║\n";
-    cout << "\t\t║         🏆 HIGH SCORE: " << highScore;
-    
-    // Căn chỉnh
-    int spaces = 15 - to_string(highScore).length();
-    for (int i = 0; i < spaces; i++) cout << " ";
-    cout << "║\n";
-    
-    SetColor(13);
-    cout << "\t\t║                                          ║\n";
-    cout << "\t\t║    Hay cố gắng phá kỷ lục này!           ║\n";
-    cout << "\t\t║                                          ║\n";
-    SetColor(14);
-    cout << "\t\t╚══════════════════════════════════════════╝\n\n";
-    SetColor(7);
-    cout << "\t\t\t[Nhan phim bat ky de quay lai]";
-    _getch();
-}
-
-void loadHighScore()
-{
-    ifstream file("highscore.dat");
-    if (file.is_open()) {
-        file >> highScore;
-        file.close();
-    }
-}
-
-void saveHighScore()
-{
-    if (diem > highScore) {
-        highScore = diem;
-        ofstream file("highscore.dat");
-        if (file.is_open()) {
-            file << highScore;
-            file.close();
-        }
-    }
-}
-
-void playGame()
-{
-    system("cls");
-    bool gameover = false;
-    diem = 0;
-    s1 = 7;
-    tocdo = 150;
-    level = 1;
-    specialFoodTimer = 0;
-
-    int toadox[MAX], toadoy[MAX];
-    veKhungGame();
-    veTuong();
-    khoiTaoRan(toadox, toadoy);
-    veRan(toadox, toadoy);
-    
-    int xqua = 0, yqua = 0;
-    int xSpecial = -1, ySpecial = -1;
-    taoQua(xqua, yqua, toadox, toadoy);
-    
-    int x = 50, y = 13;
-    int check = 2;
-    
-    while (gameover == false)
+    double currentTime = GetTime();
+    if(currentTime - lastUpdateTime >= interval)
     {
-        veThongTin();
-        veLevel();
-        
-        // Tạo quả đặc biệt ngẫu nhiên
-        specialFoodTimer++;
-        if (specialFoodTimer > 200 && xSpecial == -1 && rand() % 100 < 10) {
-            taoQuaDacBiet(xSpecial, ySpecial, toadox, toadoy);
-            specialFoodTimer = 0;
-        }
-        
-        // Xóa quả đặc biệt sau 10 giây
-        if (xSpecial != -1 && specialFoodTimer > 100) {
-            gotoXY(xSpecial, ySpecial);
-            cout << " ";
-            xSpecial = -1;
-            ySpecial = -1;
-        }
-        
-        // Xử lý phím
-        if (_kbhit())
+        lastUpdateTime = currentTime;
+        return true;
+    }
+    return false;
+}
+
+class Snake
+{
+public:
+    deque<Vector2> body = {Vector2{6,9}, Vector2{5,9}, Vector2{4,9}};
+    Vector2 direction = {1, 0};
+    bool addSegment = false;
+
+    void Draw()
+    {
+        for(unsigned int i = 0; i < body.size(); i++)
         {
-            char kitu = _getch();
-            
-            if (kitu == 27) // ESC
-            {
-                break;
-            }
-            else if (kitu == 'p' || kitu == 'P')
-            {
-                pauseGame = !pauseGame;
-                if (pauseGame)
-                {
-                    vePause();
-                    _getch();
-                    pauseGame = false;
-                    veThongTin();
-                }
-            }
-            else if (kitu == -32) // Extended key
-            {
-                kitu = _getch();
-                if (kitu == 72 && check != 0) check = 1; // Lên
-                else if (kitu == 80 && check != 1) check = 0; // Xuống
-                else if (kitu == 77 && check != 3) check = 2; // Phải
-                else if (kitu == 75 && check != 2) check = 3; // Trái
-            }
+            float x = body[i].x;
+            float y = body[i].y;
+            Rectangle segment = Rectangle{offset + x * kichThuocO, offset + y * kichThuocO, (float)kichThuocO, (float)kichThuocO};
+            DrawRectangleRounded(segment, 0.5, 6, darkgreen);
         }
-        
-        if (!pauseGame)
+    }
+
+    void Update()
+    {
+        body.push_front(Vector2Add(body[0], direction));
+        if(addSegment == true)
         {
-            xoaDuLieuCu(toadox, toadoy);
-            
-            // Di chuyển
-            if (check == 0) y++; // Xuống
-            else if (check == 1) y--; // Lên
-            else if (check == 2) x++; // Phải
-            else if (check == 3) x--; // Trái
-            
-            xuLyRan(toadox, toadoy, x, y, xqua, yqua, xSpecial, ySpecial);
-            gameover = ktRan(toadox, toadoy);
-        }
-        
-        updateParticles();
-        veParticles();
-        
-        Sleep(tocdo);
-    }
-    
-    if (gameover)
-    {
-        saveHighScore();
-        veGameOver();
-        _getch();
-    }
-}
-
-void veKhungGame()
-{
-    SetColor(9);
-    // Vẽ khung pixel
-    for (int i = 0; i < 120; i++)
-    {
-        gotoXY(i, 0);
-        cout << "█";
-        gotoXY(i, 34);
-        cout << "█";
-    }
-    
-    for (int i = 0; i < 35; i++)
-    {
-        gotoXY(0, i);
-        cout << "█";
-        gotoXY(119, i);
-        cout << "█";
-    }
-    SetColor(7);
-}
-
-void veThongTin()
-{
-    SetColor(14);
-    gotoXY(105, 2);
-    cout << "DIEM: " << diem;
-    
-    SetColor(13);
-    gotoXY(105, 4);
-    cout << "LENGTH: " << s1;
-    
-    SetColor(12);
-    gotoXY(105, 6);
-    cout << "SPEED: " << (200 - tocdo);
-    
-    SetColor(15);
-    gotoXY(105, 8);
-    cout << "HIGH: " << highScore;
-    
-    SetColor(11);
-    gotoXY(105, 12);
-    cout << "P: Pause";
-    
-    SetColor(10);
-    gotoXY(105, 14);
-    cout << "ESC: Exit";
-    SetColor(7);
-}
-
-void veLevel()
-{
-    level = (diem / 100) + 1;
-    SetColor(15);
-    gotoXY(105, 10);
-    cout << "LEVEL: " << level;
-    SetColor(7);
-}
-
-void veTuongTren()
-{
-    for (int x = 10; x <= 100; x++)
-    {
-        gotoXY(x, 1);
-        SetColor(11 + (x % 4));
-        cout << "▀";
-    }
-}
-
-void veTuongDuoi()
-{
-    for (int x = 10; x <= 100; x++)
-    {
-        gotoXY(x, 26);
-        SetColor(11 + (x % 4));
-        cout << "▄";
-    }
-}
-
-void veTuongPhai()
-{
-    for (int y = 1; y <= 26; y++)
-    {
-        gotoXY(100, y);
-        SetColor(11 + (y % 4));
-        cout << "▐";
-    }
-}
-
-void veTuongTrai()
-{
-    for (int y = 1; y <= 26; y++)
-    {
-        gotoXY(10, y);
-        SetColor(11 + (y % 4));
-        cout << "▌";
-    }
-}
-
-void veTuong()
-{
-    veTuongTren();
-    veTuongDuoi();
-    veTuongPhai();
-    veTuongTrai();
-    SetColor(7);
-}
-
-void khoiTaoRan(int toadox[], int toadoy[])
-{
-    int x = 50, y = 13;
-    for (int i = 0; i < s1; i++)
-    {
-        toadox[i] = x;
-        toadoy[i] = y;
-        x--;
-    }
-}
-
-void veRan(int toadox[], int toadoy[])
-{
-    for (int i = 0; i < s1; i++)
-    {
-        gotoXY(toadox[i], toadoy[i]);
-        if (i == 0)
-        {
-            SetColor(14); // Đầu rắn
-            cout << "◉";
+            addSegment = false;
         }
         else
+        {  
+            body.pop_back();
+        }
+
+    }
+
+    void Reset()
+    {
+        body = {Vector2{6, 9}, Vector2{5, 9}, Vector2{4, 9}};
+        direction = {1, 0};
+    }
+};
+
+class Food // Tao do an cho ran
+{
+public:
+    Vector2 position; // vi tri tuong doi cua do an 
+    Texture2D texture;
+
+    Food(deque<Vector2> snakeBody)
+    {
+        Image image = LoadImage("Graphics/Food.png");
+        texture = LoadTextureFromImage(image);
+        UnloadImage(image);
+        position = GenerateRandomPos(snakeBody);
+    }
+
+    ~Food()
+    {
+        UnloadTexture(texture);
+    }
+
+    void Draw()
+    {
+        DrawTexture(texture, offset + position.x * kichThuocO, offset + position.y * kichThuocO, WHITE);
+        // ham nay cho ta biet can 4 doi so toa do x,y,rong,cao va mau sac cua vat can ve
+    }
+
+    Vector2 GenerateRandomCell()
+    {
+        float x = GetRandomValue(0, SoOtrongMoiHangCot - 1);
+        float y = GetRandomValue(0, SoOtrongMoiHangCot - 1);
+        return Vector2{x, y};
+    }
+
+    Vector2 GenerateRandomPos(deque<Vector2>snakeBody)
+    {
+        Vector2 position = GenerateRandomCell();
+
+        while(ElementInDeque(position, snakeBody))
         {
-            SetColor(10 + (i % 6)); // Thân rắn pixel
-            cout << "▓";
+            position = GenerateRandomCell();
         }
+        return position;
     }
-    SetColor(7);
-}
 
-void xoaDuLieuCu(int toadox[], int toadoy[])
+};
+
+class Game
 {
-    for (int i = 0; i < s1; i++)
+public:
+    Snake snake = Snake();
+    Food food = Food(snake.body);
+    bool running = true;
+    int score = 0;
+    Sound eatSound;
+    Sound wallSound;
+
+    bool isDead = false;
+    Game()
     {
-        gotoXY(toadox[i], toadoy[i]);
-        cout << " ";
+        InitAudioDevice();
+        eatSound = LoadSound("Sound/eat.mp3");
+        wallSound = LoadSound("Sound/wall.mp3");
     }
-}
 
-void xuLyRan(int toadox[], int toadoy[], int x, int y, int& xqua, int& yqua, int& xSpecial, int& ySpecial)
-{
-    them(toadox, x);
-    them(toadoy, y);
-    
-    bool ateFood = false;
-    
-    // Kiểm tra ăn quả thường
-    if (ktRanAnQua(xqua, yqua, toadox[0], toadoy[0]))
+    ~Game()
     {
-        diem += 10;
-        ateFood = true;
-        veHieuUngAnQua(xqua, yqua);
-        capNhatTocDo();
-        taoQua(xqua, yqua, toadox, toadoy);
-        playSound(800, 50);
+        UnloadSound(eatSound);
+        UnloadSound(wallSound);
+        CloseAudioDevice();
     }
-    // Kiểm tra ăn quả đặc biệt
-    else if (xSpecial != -1 && ktRanAnQua(xSpecial, ySpecial, toadox[0], toadoy[0]))
+
+    void Draw()
     {
-        diem += 50;
-        ateFood = true;
-        veHieuUngAnQua(xSpecial, ySpecial);
-        xSpecial = -1;
-        ySpecial = -1;
-        playSound(1000, 100);
+        food.Draw();
+        snake.Draw();
     }
-    
-    if (!ateFood)
+
+    void Update()
     {
-        xoa(toadox, s1 - 1);
-        xoa(toadoy, s1 - 1);
-    }
-    
-    veRan(toadox, toadoy);
-}
-
-void veHieuUngAnQua(int x, int y)
-{
-    // Tạo hiệu ứng particles
-    for (int i = 0; i < 5; i++) {
-        particles.push_back(make_pair(x + (rand() % 3 - 1), y + (rand() % 3 - 1)));
-    }
-    
-    SetColor(15);
-    gotoXY(x, y);
-    cout << "✦";
-    Sleep(50);
-    gotoXY(x, y);
-    cout << " ";
-}
-
-void updateParticles()
-{
-    if (!particles.empty()) {
-        particles.erase(particles.begin());
-    }
-}
-
-void veParticles()
-{
-    SetColor(15);
-    for (auto& p : particles) {
-        if (p.first > 10 && p.first < 100 && p.second > 1 && p.second < 26) {
-            gotoXY(p.first, p.second);
-            cout << "·";
-        }
-    }
-    SetColor(7);
-}
-
-void capNhatTocDo()
-{
-    if (tocdo > 50)
-    {
-        tocdo -= 3;
-    }
-}
-
-void them(int a[], int x)
-{
-    for (int i = s1; i > 0; i--)
-    {
-        a[i] = a[i - 1];
-    }
-    a[0] = x;
-    s1++;
-}
-
-void xoa(int a[], int vt)
-{
-    for (int i = vt; i < s1; i++)
-    {
-        a[i] = a[i + 1];
-    }
-    s1--;
-}
-
-bool ktRanChamTuong(int x0, int y0)
-{
-    return (y0 <= 1 || y0 >= 26 || x0 <= 10 || x0 >= 100);
-}
-
-bool ktRanChamDuoi(int toadox[], int toadoy[])
-{
-    for (int i = 1; i < s1; i++)
-    {
-        if (toadox[0] == toadox[i] && toadoy[0] == toadoy[i])
+        if(running)
         {
-            return true;
+            snake.Update();
+            CheckCollisionWithFood();
+            CheckCollisionWithEdges();
+            CheckCollisionWithTail();
         }
     }
-    return false;
-}
 
-bool ktRan(int toadox[], int toadoy[])
-{
-    return ktRanChamDuoi(toadox, toadoy) || ktRanChamTuong(toadox[0], toadoy[0]);
-}
-
-void taoQua(int& xqua, int& yqua, int toadox[], int toadoy[])
-{
-    do
+    void CheckCollisionWithFood()
     {
-        xqua = rand() % (99 - 11 + 1) + 11;
-        yqua = rand() % (25 - 2 + 1) + 2;
-    } while (ktRanDeQua(xqua, yqua, toadox, toadoy));
-    
-    int mauQua = rand() % 6 + 10;
-    SetColor(mauQua);
-    gotoXY(xqua, yqua);
-    cout << "◆";
-    SetColor(7);
-}
-
-void taoQuaDacBiet(int& xSpecial, int& ySpecial, int toadox[], int toadoy[])
-{
-    do
-    {
-        xSpecial = rand() % (99 - 11 + 1) + 11;
-        ySpecial = rand() % (25 - 2 + 1) + 2;
-    } while (ktRanDeQua(xSpecial, ySpecial, toadox, toadoy));
-    
-    SetColor(15);
-    gotoXY(xSpecial, ySpecial);
-    cout << "★";
-    SetColor(7);
-}
-
-bool ktRanDeQua(int xqua, int yqua, int toadox[], int toadoy[])
-{
-    for (int i = 0; i < s1; i++)
-    {
-        if (xqua == toadox[i] && yqua == toadoy[i])
+        if(Vector2Equals(snake.body[0], food.position))
         {
-            return true;
+            food.position = food.GenerateRandomPos(snake.body);
+            snake.addSegment = true;
+            score++;
+            PlaySound(eatSound);
         }
     }
-    return false;
-}
 
-bool ktRanAnQua(int xqua, int yqua, int x0, int y0)
-{
-    return (x0 == xqua && y0 == yqua);
-}
+    void CheckCollisionWithEdges()
+    {
+        if(snake.body[0].x == SoOtrongMoiHangCot || snake.body[0].x == -1)
+        {
+            GameOver();
+        }
 
-void playSound(int frequency, int duration)
-{
-    Beep(frequency, duration);
-}
-
-void veGameOver()
-{
-    system("cls");
-    SetColor(12);
-    cout << "\n\n\t\t ██████   █████  ███    ███ ███████ \n";
-    cout << "\t\t██       ██   ██ ████  ████ ██      \n";
-    cout << "\t\t██   ███ ███████ ██ ████ ██ █████   \n";
-    cout << "\t\t██    ██ ██   ██ ██  ██  ██ ██      \n";
-    cout << "\t\t ██████  ██   ██ ██      ██ ███████ \n";
-    SetColor(11);
-    cout << "\t\t  ██████  ██    ██ ███████ ██████  \n";
-    cout << "\t\t ██    ██ ██    ██ ██      ██   ██ \n";
-    cout << "\t\t ██    ██ ██    ██ █████   ██████  \n";
-    cout << "\t\t ██    ██  ██  ██  ██      ██   ██ \n";
-    cout << "\t\t  ██████    ████   ███████ ██   ██ \n\n";
-    
-    SetColor(14);
-    cout << "\t\t╔══════════════════════════════════════════╗\n";
-    cout << "\t\t║              KET QUA GAME                ║\n";
-    cout << "\t\t╠══════════════════════════════════════════╣\n";
-    SetColor(13);
-    cout << "\t\t║ 🏆 Diem so: " << diem;
-    
-    int spaces = 27 - to_string(diem).length();
-    for (int i = 0; i < spaces; i++) cout << " ";
-    cout << "║\n";
-    
-    cout << "\t\t║ 🐍 Do dai: " << s1;
-    spaces = 28 - to_string(s1).length();
-    for (int i = 0; i < spaces; i++) cout << " ";
-    cout << "║\n";
-    
-    cout << "\t\t║ ⚡ Level: " << level;
-    spaces = 29 - to_string(level).length();
-    for (int i = 0; i < spaces; i++) cout << " ";
-    cout << "║\n";
-    
-    SetColor(15);
-    if (diem == highScore && diem > 0) {
-        cout << "\t\t║        🎉 NEW HIGH SCORE! 🎉             ║\n";
+        if(snake.body[0].y == SoOtrongMoiHangCot || snake.body[0].y == -1)
+        {
+            GameOver();
+        }
     }
-    
-    SetColor(14);
-    cout << "\t\t╚══════════════════════════════════════════╝\n\n";
-    
-    SetColor(11);
-    cout << "\t\t    [Nhan phim bat ky de tiep tuc...]";
-    SetColor(7);
-}
 
-void vePause()
+    void GameOver()
+    {
+        PlaySound(wallSound);
+        running = false;
+        isDead = true;  
+    }
+
+    void CheckCollisionWithTail()
+    {
+        deque<Vector2> headlessBody = snake.body;
+        headlessBody.pop_front();
+        if(ElementInDeque(snake.body[0], headlessBody))
+        {
+            GameOver();
+        }
+    }
+};
+enum GameScreen{MENU,GAME};
+int main () 
 {
-    SetColor(11);
-    gotoXY(35, 12);
-    cout << "╔═══════════════════════════╗";
-    gotoXY(35, 13);
-    cout << "║     ⏸️  GAME PAUSED       ║";
-    gotoXY(35, 14);
-    cout << "║                           ║";
-    gotoXY(35, 15);
-    cout << "║   Press P to continue...  ║";
-    gotoXY(35, 16);
-    cout << "╚═══════════════════════════╝";
-    SetColor(7);
+    cout << "Starting the game..." <<endl;
+    InitWindow(2 * offset +kichThuocO * SoOtrongMoiHangCot,2 * offset + kichThuocO * SoOtrongMoiHangCot, "Snake Game"); // cần 3 đối số: chiều rộng, chiều cao và tiêu đề - hàm khởi tạo cửa số
+    SetTargetFPS(60); // tốc độ khung hình trên giây
+
+    Texture2D menubackground = LoadTexture("graphics/background.png");
+    Button startButton{"graphics/play.png", {10, 300}, 9.5};
+    Button exitButton{"graphics/exit.png",{350,200},9.5};
+
+    Game game = Game();
+
+    GameScreen currentScreen = MENU;   // bắt đầu ở MENU
+
+    // khoi tao vong lap game
+    while(WindowShouldClose() == false) // đây là hàm kiểm tra xem phím escape hay biểu tượng đóng có được nhấn hay không
+    {
+        Vector2 mousePosition = GetMousePosition();
+        bool mousePressed= IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        if(startButton.isPressed(mousePosition,mousePressed))
+        {
+            // Start new game
+        game.snake.Reset();
+        game.food.position = game.food.GenerateRandomPos(game.snake.body);
+        game.score = 0;
+        game.isDead = false;
+        game.running = true;
+        currentScreen = GAME;
+        }
+        if(exitButton.isPressed(mousePosition,mousePressed))
+        {
+            break;
+        }
+        BeginDrawing(); //khởi tạo khung trống để vẽ mọi thứ trong game;
+
+        if (currentScreen == MENU) {
+            ClearBackground(green);
+            DrawTexture(menubackground, 0, 0, WHITE);
+            startButton.Draw();
+            exitButton.Draw();
+        }
+        else if (currentScreen == GAME ) {
+            if(eventTriggered(0.2))
+        {
+            game.Update();
+        }
+
+        if(IsKeyPressed(KEY_UP) && game.snake.direction.y != 1)
+        {
+            game.snake.direction = {0, -1};
+            game.running = true;
+        }
+        
+        if(IsKeyPressed(KEY_DOWN) && game.snake.direction.y != -1)
+        {
+            game.snake.direction = {0, 1};
+            game.running = true;
+        }
+
+        if(IsKeyPressed(KEY_LEFT) && game.snake.direction.x != 1)
+        {
+            game.snake.direction = {-1, 0};
+            game.running = true;
+        }
+
+        if(IsKeyPressed(KEY_RIGHT) && game.snake.direction.x != -1)
+        {
+            game.snake.direction = {1, 0};
+            game.running = true;
+        }
+
+        //Ve
+        ClearBackground(green); // xoa nen cua so
+        
+       
+        DrawRectangleLinesEx(Rectangle{(float)offset - 5, (float)offset - 5, (float)SoOtrongMoiHangCot * kichThuocO + 10, (float)SoOtrongMoiHangCot * kichThuocO + 10}, 5, darkgreen);
+
+        DrawText("Snake Game", offset - 5, 20, 40, darkgreen);
+        DrawText(TextFormat("%i", game.score), offset - 5, offset + 5 + SoOtrongMoiHangCot * kichThuocO, 40, darkgreen);
+        game.Draw();
+        // === THÊM NẾU MUỐN VỀ MENU KHI THUA ===
+            if (game.isDead)
+        {
+            currentScreen = MENU;
+        }
+
+        }
+
+        EndDrawing();// ngược với begin
+    }
+
+
+    CloseWindow(); // đóng cửa sổ
+    return 0;
 }
